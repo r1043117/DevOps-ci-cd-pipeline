@@ -1,0 +1,157 @@
+---
+# ============================================================
+# FLASK APPLICATION DEPLOYMENT PLAYBOOK
+# ============================================================
+# This playbook deploys the Flask app in a Docker container
+# It copies files, builds the image, and runs the container
+# ============================================================
+
+- name: Deploy Flask Application in Docker
+  hosts: app_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    app_name: flask-app
+    app_dir: "/opt/{{ app_name }}"
+    app_port: 5000
+    container_name: "{{ app_name }}"
+    image_name: "{{ app_name }}:latest"
+
+  tasks:
+    # ========================================================
+    # TASK 1: Verify Docker is Installed
+    # ========================================================
+
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      failed_when: docker_check.rc != 0
+      changed_when: false
+
+    - name: Display Docker version
+      debug:
+        msg: "Docker is installed: {{ docker_check.stdout }}"
+
+    # ========================================================
+    # TASK 2: Create Application Directory
+    # ========================================================
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: admin
+        group: admin
+        mode: '0755'
+
+    # ========================================================
+    # TASK 3: Copy Flask Application Files
+    # ========================================================
+
+    - name: Copy app.py to VM1
+      copy:
+        src: ../../flask-app/app.py
+        dest: "{{ app_dir }}/app.py"
+        owner: admin
+        group: admin
+        mode: '0644'
+
+    - name: Copy requirements.txt to VM1
+      copy:
+        src: ../../flask-app/requirements.txt
+        dest: "{{ app_dir }}/requirements.txt"
+        owner: admin
+        group: admin
+        mode: '0644'
+
+    - name: Copy Dockerfile to VM1
+      copy:
+        src: ../../flask-app/Dockerfile
+        dest: "{{ app_dir }}/Dockerfile"
+        owner: admin
+        group: admin
+        mode: '0644'
+
+    # ========================================================
+    # TASK 4: Build Docker Image
+    # ========================================================
+
+    - name: Build Flask Docker image
+      command: docker build -t {{ image_name }} {{ app_dir }}
+      args:
+        chdir: "{{ app_dir }}"
+      register: build_result
+
+    - name: Display build status
+      debug:
+        msg: "Docker image built successfully: {{ image_name }}"
+
+    # ========================================================
+    # TASK 5: Stop and Remove Old Container
+    # ========================================================
+
+    - name: Stop and remove existing Flask container
+      shell: |
+        docker stop {{ container_name }} 2>/dev/null || true
+        docker rm {{ container_name }} 2>/dev/null || true
+      args:
+        executable: /bin/bash
+
+    # ========================================================
+    # TASK 6: Run Flask Container
+    # ========================================================
+
+    - name: Run Flask container
+      command: >
+        docker run -d
+        --name {{ container_name }}
+        --restart unless-stopped
+        -p {{ app_port }}:{{ app_port }}
+        -e FLASK_ENV=production
+        -e PYTHONUNBUFFERED=1
+        {{ image_name }}
+
+    # ========================================================
+    # TASK 7: Wait for Application to Start
+    # ========================================================
+
+    - name: Wait for Flask to be ready
+      wait_for:
+        port: "{{ app_port }}"
+        delay: 3
+        timeout: 30
+        state: started
+
+    # ========================================================
+    # TASK 8: Verify Application is Running
+    # ========================================================
+
+    - name: Test Flask application health endpoint
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        return_content: yes
+        status_code: 200
+      register: health_check
+
+    - name: Display health check result
+      debug:
+        msg: "Health check passed: {{ health_check.json }}"
+
+    # ========================================================
+    # TASK 9: Display Deployment Information
+    # ========================================================
+
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "=========================================="
+          - "Flask Application Deployed Successfully!"
+          - "=========================================="
+          - "Container Name: {{ container_name }}"
+          - "Image: {{ image_name }}"
+          - "Port: {{ app_port }}"
+          - "Application URL: http://{{ ansible_host }}:{{ app_port }}"
+          - "Health Check: http://{{ ansible_host }}:{{ app_port }}/health"
+          - "=========================================="

@@ -1,0 +1,109 @@
+# ============================================================
+# ROOT .gitignore - Covers entire project tree
+# ============================================================
+
+# ------------------------------------------------------------
+# TERRAFORM
+# ------------------------------------------------------------
+# State files - contain sensitive infrastructure details
+*.tfstate
+*.tfstate.*
+terraform.tfstate
+terraform.tfstate.backup
+
+# Provider plugins - large binaries, downloaded automatically
+.terraform/
+**/.terraform/
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Variable files with actual values (use .example for templates)
+# Uncomment if you want to exclude tfvars:
+# *.tfvars
+# !*.tfvars.example
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config
+.terraformrc
+terraform.rc
+
+# ------------------------------------------------------------
+# ANSIBLE
+# ------------------------------------------------------------
+# Vault password - NEVER commit this
+.vault_pass.txt
+vault_pass.txt
+.vault_password
+vault_password
+
+# Retry files
+*.retry
+
+# Facts cache
+facts/
+fact_cache/
+*.fact
+
+# ------------------------------------------------------------
+# PYTHON
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+ENV/
+.env
+.env.local
+.env.*.local
+
+# ------------------------------------------------------------
+# IDE / EDITORS
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*.swn
+.*.sw?
+*~
+*.bak
+
+# ------------------------------------------------------------
+# OS FILES
+# ------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+.directory
+
+# ------------------------------------------------------------
+# LOGS & TEMP
+# ------------------------------------------------------------
+*.log
+*.tmp
+tmp/
+temp/
+
+# ------------------------------------------------------------
+# SECRETS (catch-all patterns)
+# ------------------------------------------------------------
+*.pem
+*.key
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+credentials.json
+secrets.json
+.secrets

@@ -1,0 +1,55 @@
+---
+# ============================================================
+# PYTHON TOOLS INSTALLATION PLAYBOOK
+# ============================================================
+# This playbook installs pip3 and essential Python development tools
+# pip3 is needed to install Python packages like Flask
+# ============================================================
+
+- name: Install Python Tools (pip3 and virtualenv)
+  hosts: app_servers
+  become: yes
+  # └─> Run with sudo privileges to install system packages
+
+  tasks:
+    # --------------------------------------------------------
+    # TASK 1: Update apt cache
+    # --------------------------------------------------------
+    # Always update package list before installing to get latest versions
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        # └─> Only update if cache is older than 1 hour (3600 seconds)
+
+    # --------------------------------------------------------
+    # TASK 2: Install pip3 and Python development tools
+    # --------------------------------------------------------
+    # python3-pip: Python package manager (pip3)
+    # python3-venv: For creating virtual environments
+    # python3-dev: Python development headers (needed for some packages)
+    - name: Install pip3 and Python development tools
+      apt:
+        name:
+          - python3-pip
+          - python3-venv
+          - python3-dev
+        state: present
+        # └─> state: present means "ensure these are installed"
+
+    # --------------------------------------------------------
+    # TASK 3: Verify pip3 installation
+    # --------------------------------------------------------
+    - name: Verify pip3 is installed
+      command: pip3 --version
+      register: pip_version
+      changed_when: false
+      # └─> changed_when: false means this task won't show as "changed"
+      #     because we're just checking, not modifying anything
+
+    # --------------------------------------------------------
+    # TASK 4: Display pip3 version
+    # --------------------------------------------------------
+    - name: Display pip3 version
+      debug:
+        msg: "pip3 installed: {{ pip_version.stdout }}"

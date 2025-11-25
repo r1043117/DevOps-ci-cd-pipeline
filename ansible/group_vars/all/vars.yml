@@ -1,0 +1,353 @@
+# ============================================================
+# PUBLIC VARIABLES - Safe to Commit to Git
+# ============================================================
+# These are non-sensitive configuration values used across all servers
+# Secrets go in vault.yml (encrypted)
+# ============================================================
+
+# ------------------------------------------------------------
+# APPLICATION SETTINGS
+# ------------------------------------------------------------
+
+# Application name (used in paths, service names, etc.)
+app_name: flask-app
+
+# Application port (where Flask will listen)
+app_port: 5000
+
+# Application environment (development, staging, production)
+app_environment: production
+
+# Application directory (where code will be deployed)
+app_directory: /opt/{{ app_name }}
+
+# Application user (non-root user to run the app)
+app_user: flask-user
+
+# Application group
+app_group: flask-user
+
+# ------------------------------------------------------------
+# EXPLANATION: Why These Variables?
+# ------------------------------------------------------------
+#
+# app_name: "flask-app"
+#   └─> Used throughout playbooks for consistency
+#       Creates: /opt/flask-app/
+#       Service name: flask-app.service
+#       Docker container: flask-app-container
+#       Makes it easy to change the name everywhere at once
+#
+# app_port: 5000
+#   └─> Flask's default port (accessible from outside)
+#       Security group must allow this port
+#       Access URL: http://52.210.39.239:5000
+#       Can be changed if port conflict exists
+#
+# app_environment: "production"
+#   └─> Controls Flask behavior
+#       production: Debug OFF, optimized
+#       development: Debug ON, auto-reload
+#       staging: Testing before production
+#
+# app_directory: "/opt/flask-app"
+#   └─> Where application code lives
+#       /opt/ is standard for third-party applications
+#       Alternative: /var/www/, /srv/, /home/user/
+#
+# app_user: "flask-user"
+#   └─> Security best practice - don't run as root!
+#       Creates dedicated user with minimal permissions
+#       If app is compromised, damage is limited
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# DOCKER SETTINGS
+# ------------------------------------------------------------
+
+# Docker version to install (latest, 20.10, etc.)
+docker_version: latest
+
+# Docker Compose version (if needed later)
+docker_compose_version: "2.20.0"
+
+# Docker registry (for pulling images)
+docker_registry: docker.io
+
+# Docker network name (for container networking)
+docker_network_name: flask-network
+
+# ------------------------------------------------------------
+# EXPLANATION: Docker Configuration
+# ------------------------------------------------------------
+#
+# docker_version: "latest"
+#   └─> Which Docker version to install
+#       "latest": Always get newest (recommended for learning)
+#       "20.10": Pin to specific version (production)
+#       "5:24.0": Specific version with epoch
+#
+# docker_compose_version: "2.20.0"
+#   └─> Docker Compose for multi-container setups
+#       Useful if you add database, Redis, etc. later
+#       Version 2.x uses "docker compose" (new style)
+#       Version 1.x uses "docker-compose" (old style)
+#
+# docker_network_name: "flask-network"
+#   └─> Custom Docker network for containers
+#       Allows containers to communicate
+#       Isolates from default bridge network
+#       Example: Flask app + PostgreSQL database
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# PYTHON SETTINGS
+# ------------------------------------------------------------
+
+# Python version to install
+python_version: "3.11"
+
+# Python packages to install globally
+python_global_packages:
+  - pip
+  - virtualenv
+  - setuptools
+  - wheel
+
+# Virtual environment path
+python_venv_path: "{{ app_directory }}/venv"
+
+# ------------------------------------------------------------
+# EXPLANATION: Python Configuration
+# ------------------------------------------------------------
+#
+# python_version: "3.11"
+#   └─> Which Python version to use
+#       Debian 12 default: 3.11
+#       Flask requirement: 3.8+
+#       Recommendation: Use OS default for stability
+#
+# python_global_packages:
+#   └─> Tools installed system-wide
+#       pip: Package installer
+#       virtualenv: Creates isolated environments
+#       setuptools: Build Python packages
+#       wheel: Binary package format (faster installs)
+#
+# python_venv_path: "/opt/flask-app/venv"
+#   └─> Where virtual environment is created
+#       Isolates app dependencies from system Python
+#       Best practice: One venv per application
+#       Prevents dependency conflicts
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# GIT REPOSITORY SETTINGS
+# ------------------------------------------------------------
+
+# Git repository URL (HTTPS or SSH)
+# HTTPS example: https://github.com/username/repo.git
+# SSH example: git@github.com:username/repo.git
+git_repo_url: "https://github.com/yourusername/flask-app.git"
+
+# Git branch to deploy
+git_branch: main
+
+# Git repository destination (where to clone)
+git_repo_dest: "{{ app_directory }}/source"
+
+# ------------------------------------------------------------
+# EXPLANATION: Git Settings
+# ------------------------------------------------------------
+#
+# git_repo_url: "https://github.com/yourusername/flask-app.git"
+#   └─> Where your Flask application code lives
+#       HTTPS: No SSH key needed, but may need credentials
+#       SSH: Requires SSH key setup, more secure
+#       UPDATE THIS: Replace with your actual repository
+#
+# git_branch: "main"
+#   └─> Which branch to deploy
+#       main: Production-ready code
+#       develop: Development version
+#       feature/xyz: Specific feature branch
+#       Allows deploying different versions
+#
+# git_repo_dest: "/opt/flask-app/source"
+#   └─> Where to clone the repository
+#       Keeps source code separate from venv
+#       Can be pulled/updated easily
+#       Structure: /opt/flask-app/source/ contains your code
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# SYSTEM PACKAGES
+# ------------------------------------------------------------
+
+# System packages to install via apt
+system_packages:
+  - git
+  - curl
+  - wget
+  - vim
+  - htop
+  - build-essential
+  - python3-dev
+  - python3-pip
+  - python3-venv
+
+# ------------------------------------------------------------
+# EXPLANATION: System Packages
+# ------------------------------------------------------------
+#
+# git: Version control, clone repositories
+# curl/wget: Download files from internet
+# vim: Text editor (can use nano instead)
+# htop: Interactive process viewer (better than top)
+# build-essential: Compilers (gcc, make) for building Python packages
+# python3-dev: Python header files for compiling extensions
+# python3-pip: Python package installer
+# python3-venv: Virtual environment module
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# FLASK APPLICATION SETTINGS (Non-Sensitive)
+# ------------------------------------------------------------
+
+# Flask host (0.0.0.0 = listen on all interfaces)
+flask_host: "0.0.0.0"
+
+# Flask port (same as app_port)
+flask_port: "{{ app_port }}"
+
+# Flask workers (for production with Gunicorn)
+flask_workers: 4
+
+# Flask timeout (seconds)
+flask_timeout: 120
+
+# ------------------------------------------------------------
+# EXPLANATION: Flask Settings
+# ------------------------------------------------------------
+#
+# flask_host: "0.0.0.0"
+#   └─> Listen on all network interfaces
+#       0.0.0.0: Accessible from outside (internet)
+#       127.0.0.1: Only accessible from localhost (testing)
+#       Required for accessing via public IP
+#
+# flask_workers: 4
+#   └─> Number of worker processes (for Gunicorn)
+#       Formula: (2 x CPU cores) + 1
+#       t3.micro has 2 vCPUs: (2 x 2) + 1 = 5 workers
+#       We use 4 to leave some headroom
+#       More workers = handle more concurrent requests
+#
+# flask_timeout: 120
+#   └─> Request timeout in seconds
+#       How long before killing slow requests
+#       120 seconds is reasonable for web apps
+#       Adjust based on your slowest endpoint
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# SYSTEMD SERVICE SETTINGS
+# ------------------------------------------------------------
+
+# Service name for systemd
+service_name: "{{ app_name }}"
+
+# Service description
+service_description: "Flask Application Service"
+
+# Restart policy (always, on-failure, no)
+service_restart: always
+
+# User to run service as
+service_user: "{{ app_user }}"
+
+# ------------------------------------------------------------
+# EXPLANATION: Systemd Service
+# ------------------------------------------------------------
+#
+# service_name: "flask-app"
+#   └─> Name of the systemd service
+#       Control with: systemctl start flask-app
+#       Status: systemctl status flask-app
+#       Logs: journalctl -u flask-app
+#
+# service_restart: "always"
+#   └─> When to restart service
+#       always: Restart even after clean exit
+#       on-failure: Only restart if crashed
+#       no: Don't auto-restart
+#       "always" keeps your app running!
+#
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# LOGGING SETTINGS
+# ------------------------------------------------------------
+
+# Log directory
+log_directory: /var/log/{{ app_name }}
+
+# Log file
+log_file: "{{ log_directory }}/app.log"
+
+# Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level: INFO
+
+# ------------------------------------------------------------
+# EXPLANATION: Logging
+# ------------------------------------------------------------
+#
+# log_directory: "/var/log/flask-app"
+#   └─> Standard location for application logs
+#       /var/log/ is Linux standard for logs
+#       Rotated automatically by logrotate
+#       Accessible to admin user
+#
+# log_level: "INFO"
+#   └─> What to log
+#       DEBUG: Everything (verbose, for development)
+#       INFO: General informational messages
+#       WARNING: Warning messages only
+#       ERROR: Errors only
+#       Production: Use INFO or WARNING
+#
+# ------------------------------------------------------------
+
+# ============================================================
+# VARIABLE USAGE IN PLAYBOOKS
+# ============================================================
+# These variables are used like this in playbooks:
+#
+# - name: Create application directory
+#   file:
+#     path: "{{ app_directory }}"  # Becomes /opt/flask-app
+#     owner: "{{ app_user }}"      # Becomes flask-user
+#     state: directory
+#
+# - name: Clone repository
+#   git:
+#     repo: "{{ git_repo_url }}"
+#     dest: "{{ git_repo_dest }}"
+#     version: "{{ git_branch }}"
+#
+# ============================================================
+
+# ============================================================
+# NOTES
+# ============================================================
+# - Update git_repo_url with your actual repository
+# - All paths use absolute paths (start with /)
+# - Variables can reference other variables: "{{ app_name }}"
+# - Sensitive values (passwords, keys) go in vault.yml
+# ============================================================

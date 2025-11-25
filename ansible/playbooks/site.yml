@@ -1,0 +1,17 @@
+---
+# ============================================================
+# MASTER PLAYBOOK - Complete Flask App Deployment
+# ============================================================
+# Runs all playbooks in correct order for full deployment
+#
+# HOW TO RUN: ansible-playbook playbooks/site.yml
+# ============================================================
+
+- name: "STEP 1 - Install Docker on App Servers"
+  import_playbook: docker.yml
+
+- name: "STEP 2 - Install Python Tools on App Servers"
+  import_playbook: python-tools.yml
+
+- name: "STEP 3 - Deploy Flask Application"
+  import_playbook: deploy-flask.yml

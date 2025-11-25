@@ -1,0 +1,152 @@
+# ============================================================
+# BEGINNER'S GUIDE TO THIS PLAYBOOK
+# ============================================================
+#
+# WHAT THIS PLAYBOOK DOES:
+# 1. Checks if Docker is installed on VM1
+# 2. Creates a directory for your Flask app (/opt/flask-app)
+# 3. Copies your Flask files from your computer to VM1
+# 4. Builds a Docker image (like packaging your app)
+# 5. Stops any old version of the app
+# 6. Starts the new version in a Docker container
+# 7. Tests that the app is working
+# 8. Shows you the URL to access your app
+#
+# HOW TO RUN:
+#   cd ansible/
+#   ansible-playbook playbooks/deploy-flask.yml
+#
+# WHAT YOU NEED FIRST:
+#   - Docker installed on VM1 (run: ansible-playbook playbooks/docker.yml)
+#   - Flask app files in: ../flask-app/
+#
+# ============================================================
+
+# VARIABLES EXPLANATION:
+# ----------------------
+# app_name: "flask-app"
+#   └─> The name of your application
+#
+# app_dir: "/opt/flask-app"
+#   └─> Where files are stored on VM1
+#       /opt/ = standard Linux location for applications
+#
+# app_port: 5000
+#   └─> Port number where Flask runs
+#       Must match the port in your Dockerfile
+#
+# container_name: "flask-app"
+#   └─> Name of the Docker container
+#       Shows when you run: docker ps
+#
+# image_name: "flask-app:latest"
+#   └─> Name of the Docker image
+#       format is name:tag (like a version label)
+#
+# ============================================================
+
+# TASK EXPLANATIONS:
+# -----------------
+
+# TASK 1: Check if Docker is installed
+#   - Runs: docker --version
+#   - If Docker not found, playbook stops here
+#   - Prevents errors later in the playbook
+
+# TASK 2: Create application directory
+#   - Makes folder: /opt/flask-app on VM1
+#   - Like running: mkdir /opt/flask-app
+#   - Sets permissions so admin user can use it
+
+# TASK 3: Copy files
+#   - Transfers app.py from your computer to VM1
+#   - Transfers requirements.txt to VM1
+#   - Transfers Dockerfile to VM1
+#   - Docker needs these files on VM1 to build the image
+
+# TASK 4: Build Docker image
+#   - Runs: docker build -t flask-app:latest /opt/flask-app
+#   - Reads the Dockerfile instructions
+#   - Downloads Python base image
+#   - Installs Flask and gunicorn
+#   - Creates a ready-to-run package (image)
+
+# TASK 5: Stop old container
+#   - Stops any running version: docker stop flask-app
+#   - Removes old container: docker rm flask-app
+#   - Ignores errors if no old container exists
+
+# TASK 6: Run new container
+#   - Starts the Flask app: docker run -d -p 5000:5000 flask-app:latest
+#   - Flags explained:
+#       -d = run in background (detached mode)
+#       --name flask-app = give it a friendly name
+#       --restart unless-stopped = restart if it crashes
+#       -p 5000:5000 = expose port 5000 (HOST:CONTAINER)
+#       -e FLASK_ENV=production = set environment variable
+#       flask-app:latest = which image to run
+
+# TASK 7: Wait for app to start
+#   - Waits up to 30 seconds for port 5000 to open
+#   - Gives Flask time to initialize
+#   - Prevents testing before app is ready
+
+# TASK 8: Test the app
+#   - Calls: http://localhost:5000/health
+#   - Expects: {"status": "healthy", "message": "Flask app is running"}
+#   - Confirms app is working correctly
+
+# TASK 9: Show summary
+#   - Displays the URL to access your app
+#   - Shows useful docker commands
+#   - Confirms everything worked!
+
+# ============================================================
+
+# COMMON ISSUES AND SOLUTIONS:
+# ----------------------------
+#
+# "Docker not installed" error:
+#   → Run: ansible-playbook playbooks/docker.yml first
+#
+# "Port 5000 already in use" error:
+#   → SSH to VM1: ssh -i ~/.ssh/klinkr-key.pem admin@54.171.192.121
+#   → Stop old container: docker stop flask-app && docker rm flask-app
+#
+# "Cannot build image" error:
+#   → Check Dockerfile exists in flask-app/
+#   → Check requirements.txt exists
+#   → Check app.py exists
+#
+# "Health check failed" error:
+#   → SSH to VM1
+#   → View logs: docker logs flask-app
+#   → Check if container is running: docker ps
+#
+# "Cannot access app in browser":
+#   → Check AWS security group allows port 5000
+#   → Try: terraform output (see security group info)
+#
+# ============================================================
+
+# AFTER DEPLOYMENT:
+# -----------------
+#
+# Access your app:
+#   http://54.171.192.121:5000/
+#
+# Check health endpoint:
+#   http://54.171.192.121:5000/health
+#
+# Useful commands (SSH to VM1 first):
+#   docker ps                    # See running containers
+#   docker logs flask-app        # View app logs
+#   docker logs -f flask-app     # Follow logs in real-time
+#   docker stop flask-app        # Stop the app
+#   docker start flask-app       # Start the app
+#   docker restart flask-app     # Restart the app
+#   docker rm -f flask-app       # Force remove container
+#   docker images                # List Docker images
+#   docker rmi flask-app:latest  # Remove the image
+#
+# ============================================================

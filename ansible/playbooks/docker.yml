@@ -1,0 +1,628 @@
+---
+# ============================================================
+# DOCKER INSTALLATION PLAYBOOK
+# ============================================================
+# This playbook installs and configures Docker on Debian 12
+# Docker allows running containerized applications
+# ============================================================
+
+# ------------------------------------------------------------
+# PLAYBOOK HEADER
+# ------------------------------------------------------------
+# Every playbook starts with "---" (YAML document start marker)
+# Then defines what hosts to target and basic settings
+
+- name: Install and Configure Docker
+  # └─> Human-readable description of this playbook
+  #     Shows in output when running: "PLAY [Install and Configure Docker]"
+  #     Be descriptive - helps with debugging and documentation
+
+  hosts: app_servers
+  # └─> Which servers to run this playbook on
+  #     Matches group name in inventory.ini: [app_servers]
+  #     Could also be:
+  #       - "all" (all servers in inventory)
+  #       - "vm1" (specific host)
+  #       - "app_servers:jenkins_servers" (multiple groups)
+
+  become: true
+  # └─> Run tasks with sudo/root privileges
+  #     Required for: installing packages, editing system files
+  #     Maps to: become=True in ansible.cfg
+  #     Without this: "Permission denied" errors
+
+  gather_facts: true
+  # └─> Collect system information before running tasks
+  #     Facts include: OS version, IP addresses, memory, CPU
+  #     Useful for: conditional tasks, debugging
+  #     Can disable with "false" to speed up playbook
+
+  # ------------------------------------------------------------
+  # TASKS SECTION
+  # ------------------------------------------------------------
+  # Tasks are executed in order, one by one
+  # Each task uses a "module" (Ansible's built-in functions)
+
+  tasks:
+    # ========================================================
+    # TASK 1: Update APT Cache
+    # ========================================================
+    # Like running: apt update
+    # Refreshes the list of available packages
+
+    - name: Update apt package cache
+      # └─> Task description (shows in output)
+
+      apt:
+        # └─> Module name: "apt" (Debian/Ubuntu package manager)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html
+
+        update_cache: yes
+        # └─> Refresh package list (apt update)
+        #     yes = run apt update
+        #     no = skip update (faster but may have outdated package info)
+
+        cache_valid_time: 3600
+        # └─> Only update if cache is older than 3600 seconds (1 hour)
+        #     Prevents unnecessary updates on repeated runs
+        #     Speeds up playbook execution
+        #     3600 seconds = 1 hour
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why update apt cache?
+      # --------------------------------------------------------
+      # APT keeps a local cache of available packages
+      # This cache can become outdated
+      # Without updating: might try to install non-existent package versions
+      # Result: Installation failures
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 2: Install Prerequisites
+    # ========================================================
+    # Install packages needed for adding Docker's repository
+
+    - name: Install required system packages
+      # └─> Description: What packages and why
+
+      apt:
+        name:
+          # └─> List of packages to install
+          #     Each item is a package name from Debian repositories
+
+          - apt-transport-https
+            # └─> Allows APT to retrieve packages over HTTPS
+            #     Required for: Secure package downloads
+            #     Why needed: Docker repo uses HTTPS
+
+          - ca-certificates
+            # └─> Certificate Authority certificates
+            #     Validates SSL/TLS certificates
+            #     Required for: Secure HTTPS connections
+
+          - curl
+            # └─> Command-line tool for downloading files
+            #     Used for: Downloading Docker's GPG key
+            #     Alternative: wget
+
+          - gnupg
+            # └─> GNU Privacy Guard (GPG) tools
+            #     Used for: Verifying package signatures
+            #     Why needed: Verify Docker packages are authentic
+
+          - lsb-release
+            # └─> Provides Linux Standard Base info
+            #     Used for: Detecting Debian version
+            #     Why needed: Docker repo URL needs OS version
+
+        state: present
+        # └─> Desired state of packages
+        #     present = install if not already installed (idempotent)
+        #     latest = install and upgrade to latest version
+        #     absent = uninstall (remove)
+
+      # --------------------------------------------------------
+      # EXPLANATION: Idempotency
+      # --------------------------------------------------------
+      # If packages are already installed → Ansible does nothing
+      # If packages are missing → Ansible installs them
+      # Safe to run multiple times → No duplicate installations
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 3: Create Directory for Docker GPG Key
+    # ========================================================
+    # Ensure the directory exists before adding the key
+
+    - name: Create directory for Docker GPG key
+      # └─> Create /etc/apt/keyrings if it doesn't exist
+
+      file:
+        # └─> Module: "file" (manage files and directories)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/file_module.html
+
+        path: /etc/apt/keyrings
+        # └─> Directory path to create
+        #     Standard location for APT GPG keys in Debian 12
+
+        state: directory
+        # └─> Ensure path is a directory
+        #     directory = create directory (mkdir)
+        #     file = ensure it's a regular file
+        #     absent = delete
+        #     link = create symlink
+
+        mode: '0755'
+        # └─> Directory permissions (octal notation)
+        #     0755 = rwxr-xr-x
+        #     Owner: read, write, execute (7)
+        #     Group: read, execute (5)
+        #     Others: read, execute (5)
+        #     Required for: System can read GPG keys
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why /etc/apt/keyrings?
+      # --------------------------------------------------------
+      # Debian 12 changed the standard location for GPG keys
+      # Old location: /etc/apt/trusted.gpg.d/
+      # New location: /etc/apt/keyrings/ (more secure)
+      # This is the recommended path for modern Debian
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 4: Download Docker's Official GPG Key
+    # ========================================================
+    # Add Docker's GPG key to verify package authenticity
+
+    - name: Add Docker official GPG key
+      # └─> Download and save Docker's public key
+
+      shell: |
+        curl -fsSL https://download.docker.com/linux/debian/gpg | \
+        gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      # └─> Module: "shell" (run shell commands)
+      #     Allows: Pipes, redirects, complex bash syntax
+      #     Alternative: "command" module (simpler, no bash features)
+      #     | = multi-line YAML string
+
+      # --------------------------------------------------------
+      # COMMAND BREAKDOWN:
+      # --------------------------------------------------------
+      # curl -fsSL https://download.docker.com/linux/debian/gpg
+      #   -f = Fail silently on HTTP errors
+      #   -s = Silent mode (no progress bar)
+      #   -S = Show errors even in silent mode
+      #   -L = Follow redirects
+      #
+      # | = Pipe output to next command
+      #
+      # gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      #   --dearmor = Convert ASCII-armored key to binary
+      #   -o = Output file location
+      # --------------------------------------------------------
+
+      args:
+        # └─> Additional arguments for the shell module
+
+        creates: /etc/apt/keyrings/docker.gpg
+        # └─> Skip task if this file already exists
+        #     Idempotency: Don't re-download if key exists
+        #     Faster: Skips download on subsequent runs
+        #     Safe: Won't overwrite existing key
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why GPG Key?
+      # --------------------------------------------------------
+      # GPG keys verify package authenticity
+      # Prevents: Installing malicious/tampered packages
+      # Docker signs their packages with this key
+      # APT checks signature before installing
+      # Security best practice!
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 5: Set Correct Permissions on GPG Key
+    # ========================================================
+    # Make the key readable by all users (required for APT)
+
+    - name: Set permissions on Docker GPG key
+      # └─> Ensure APT can read the key
+
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        # └─> The GPG key file we just created
+
+        mode: '0644'
+        # └─> File permissions
+        #     0644 = rw-r--r--
+        #     Owner: read, write (6)
+        #     Group: read (4)
+        #     Others: read (4)
+        #     APT needs read access
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why 0644?
+      # --------------------------------------------------------
+      # APT runs with various user permissions
+      # Needs to read GPG key to verify packages
+      # 0644 allows all users to read (but not modify)
+      # More restrictive = APT can't verify packages
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 6: Add Docker Repository
+    # ========================================================
+    # Add Docker's official repository to APT sources
+
+    - name: Add Docker repository to apt sources
+      # └─> Tell APT where to find Docker packages
+
+      apt_repository:
+        # └─> Module: "apt_repository" (manage APT sources)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_repository_module.html
+
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable"
+        # └─> Repository specification (one line)
+        #
+        # BREAKDOWN:
+        # deb = Debian package type (not source package)
+        # [arch=amd64] = Only for 64-bit AMD/Intel processors
+        # [signed-by=/etc/apt/keyrings/docker.gpg] = GPG key location
+        # https://download.docker.com/linux/debian = Docker's repo URL
+        # bookworm = Debian 12 codename
+        # stable = Use stable release channel (not edge/test)
+
+        state: present
+        # └─> Add repository (don't remove it)
+
+        filename: docker
+        # └─> Creates: /etc/apt/sources.list.d/docker.list
+        #     Keeps Docker repo separate from system repos
+        #     Easy to remove later if needed
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why add repository?
+      # --------------------------------------------------------
+      # Debian's default repos have outdated Docker version
+      # Docker's official repo has latest stable releases
+      # Better support, more features, security updates
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 7: Update APT Cache Again
+    # ========================================================
+    # Refresh package list to include Docker repository
+
+    - name: Update apt cache after adding Docker repository
+      # └─> Load Docker packages into APT cache
+
+      apt:
+        update_cache: yes
+        # └─> Run: apt update
+        #     Fetches package list from Docker repo
+        #     Required before installing Docker packages
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why update again?
+      # --------------------------------------------------------
+      # Just added new Docker repository
+      # APT doesn't know about Docker packages yet
+      # Must refresh cache to see new packages
+      # Without this: "Package docker-ce not found" error
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 8: Install Docker Packages
+    # ========================================================
+    # Install Docker Engine and related components
+
+    - name: Install Docker packages
+      # └─> Main Docker installation step
+
+      apt:
+        name:
+          # └─> List of Docker-related packages
+
+          - docker-ce
+            # └─> Docker Community Edition (engine)
+            #     The core Docker daemon and runtime
+            #     Runs and manages containers
+
+          - docker-ce-cli
+            # └─> Docker command-line interface
+            #     The "docker" command you use in terminal
+            #     Examples: docker ps, docker run
+
+          - containerd.io
+            # └─> Container runtime (low-level)
+            #     Docker's dependency for running containers
+            #     Industry-standard runtime
+
+          - docker-buildx-plugin
+            # └─> Docker BuildX plugin
+            #     Enhanced build capabilities
+            #     Multi-platform image builds
+
+          - docker-compose-plugin
+            # └─> Docker Compose V2
+            #     Manage multi-container applications
+            #     Command: docker compose (not docker-compose)
+
+        state: present
+        # └─> Install if not present (idempotent)
+
+      # --------------------------------------------------------
+      # EXPLANATION: Package Details
+      # --------------------------------------------------------
+      # docker-ce: Main engine (required)
+      # docker-ce-cli: CLI tools (required)
+      # containerd.io: Runtime (required)
+      # docker-buildx-plugin: Build images (optional but useful)
+      # docker-compose-plugin: Multi-container (optional but useful)
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 9: Start and Enable Docker Service
+    # ========================================================
+    # Start Docker now and configure to start on boot
+
+    - name: Ensure Docker service is started and enabled
+      # └─> Make Docker run automatically
+
+      systemd:
+        # └─> Module: "systemd" (manage systemd services)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/systemd_module.html
+
+        name: docker
+        # └─> Service name (from /etc/systemd/system/)
+        #     Full name: docker.service
+
+        state: started
+        # └─> Desired service state
+        #     started = service is running
+        #     stopped = service is not running
+        #     restarted = stop then start
+        #     reloaded = reload configuration without stopping
+
+        enabled: yes
+        # └─> Start automatically on boot
+        #     yes = systemctl enable docker
+        #     no = don't start on boot
+        #     Important: Survives reboots!
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why enable?
+      # --------------------------------------------------------
+      # "started" = running now
+      # "enabled" = starts after reboot
+      # Without enabled: Docker stops after reboot
+      # Your containers won't start automatically!
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 10: Add Admin User to Docker Group
+    # ========================================================
+    # Allow admin user to run Docker without sudo
+
+    - name: Add admin user to docker group
+      # └─> Grant Docker permissions to admin user
+
+      user:
+        # └─> Module: "user" (manage user accounts)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html
+
+        name: admin
+        # └─> Username (Debian's default user)
+        #     Your SSH user from inventory.ini
+
+        groups: docker
+        # └─> Add user to "docker" group
+        #     Docker group has permission to use Docker socket
+
+        append: yes
+        # └─> Add to group (don't remove from other groups)
+        #     yes = add to docker group + keep existing groups
+        #     no = ONLY docker group (removes from sudo, etc.) ⚠️
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why docker group?
+      # --------------------------------------------------------
+      # Docker daemon runs as root
+      # Docker socket: /var/run/docker.sock (root-only)
+      # docker group: Can access Docker socket
+      # Without this: Must use "sudo docker" every time
+      # With this: Can use "docker" directly
+      #
+      # Security note:
+      # docker group = effectively root access
+      # Only add trusted users!
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 11: Verify Docker Installation
+    # ========================================================
+    # Test that Docker is working properly
+
+    - name: Verify Docker is working
+      # └─> Quick test to ensure installation succeeded
+
+      command: docker --version
+      # └─> Module: "command" (run simple commands)
+      #     Runs: docker --version
+      #     Returns: Docker version 24.x.x, build xxxxx
+
+      register: docker_version_output
+      # └─> Store command output in variable
+      #     Variable name: docker_version_output
+      #     Can be used in later tasks
+      #     Contains: stdout, stderr, return_code
+
+      changed_when: false
+      # └─> Don't mark as "changed"
+      #     This is a read-only check (doesn't modify system)
+      #     Keeps Ansible output clean
+      #     Won't show as "changed" in results
+
+      # --------------------------------------------------------
+      # EXPLANATION: Why verify?
+      # --------------------------------------------------------
+      # Confirms Docker is installed and in PATH
+      # Catches installation problems early
+      # Provides version info for debugging
+      # Good practice: Always verify critical installations
+      # --------------------------------------------------------
+
+    # ========================================================
+    # TASK 12: Display Docker Version
+    # ========================================================
+    # Show Docker version in playbook output
+
+    - name: Display Docker version
+      # └─> Print version information for user
+
+      debug:
+        # └─> Module: "debug" (print messages/variables)
+        #     Official docs: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/debug_module.html
+
+        msg: "Docker version installed: {{ docker_version_output.stdout }}"
+        # └─> Message to display
+        #     {{ variable }} = Jinja2 template syntax
+        #     docker_version_output.stdout = captured output
+        #     Shows: "Docker version installed: Docker version 24.x.x..."
+
+      # --------------------------------------------------------
+      # EXPLANATION: Jinja2 Templating
+      # --------------------------------------------------------
+      # {{ variable }} = Insert variable value
+      # docker_version_output = variable from previous task
+      # .stdout = standard output (the version string)
+      # Other attributes: .stderr, .rc, .changed
+      # --------------------------------------------------------
+
+# ============================================================
+# END OF PLAYBOOK
+# ============================================================
+
+# ============================================================
+# HOW TO RUN THIS PLAYBOOK
+# ============================================================
+#
+# From the ansible/ directory:
+#
+#   ansible-playbook playbooks/docker.yml
+#
+# With verbose output (for debugging):
+#
+#   ansible-playbook playbooks/docker.yml -v
+#   ansible-playbook playbooks/docker.yml -vv
+#   ansible-playbook playbooks/docker.yml -vvv  # Very verbose
+#
+# Dry run (check mode - don't make changes):
+#
+#   ansible-playbook playbooks/docker.yml --check
+#
+# Run only specific tasks (by name):
+#
+#   ansible-playbook playbooks/docker.yml --start-at-task="Install Docker packages"
+#
+# ============================================================
+
+# ============================================================
+# EXPECTED OUTPUT
+# ============================================================
+#
+# PLAY [Install and Configure Docker] ***************************
+#
+# TASK [Gathering Facts] *****************************************
+# ok: [vm1]
+#
+# TASK [Update apt package cache] ********************************
+# changed: [vm1]
+#
+# TASK [Install required system packages] ***********************
+# changed: [vm1]
+#
+# TASK [Create directory for Docker GPG key] ********************
+# changed: [vm1]
+#
+# TASK [Add Docker official GPG key] ****************************
+# changed: [vm1]
+#
+# TASK [Set permissions on Docker GPG key] **********************
+# ok: [vm1]
+#
+# TASK [Add Docker repository to apt sources] *******************
+# changed: [vm1]
+#
+# TASK [Update apt cache after adding Docker repository] ********
+# changed: [vm1]
+#
+# TASK [Install Docker packages] ********************************
+# changed: [vm1]
+#
+# TASK [Ensure Docker service is started and enabled] ***********
+# changed: [vm1]
+#
+# TASK [Add admin user to docker group] *************************
+# changed: [vm1]
+#
+# TASK [Verify Docker is working] *******************************
+# ok: [vm1]
+#
+# TASK [Display Docker version] *********************************
+# ok: [vm1] => {
+#     "msg": "Docker version installed: Docker version 24.0.7, build afdd53b"
+# }
+#
+# PLAY RECAP *****************************************************
+# vm1 : ok=13   changed=9   unreachable=0   failed=0
+#
+# ============================================================
+
+# ============================================================
+# TROUBLESHOOTING
+# ============================================================
+#
+# Error: "Unable to locate package docker-ce"
+# Fix: Check Docker repository was added correctly
+#      Run: cat /etc/apt/sources.list.d/docker.list
+#
+# Error: "GPG error: docker repository"
+# Fix: GPG key not added correctly
+#      Manually run: curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+#
+# Error: "Failed to start docker.service"
+# Fix: Check Docker installation
+#      Run: systemctl status docker
+#      Run: journalctl -u docker
+#
+# Error: "Permission denied" when testing Docker
+# Fix: Admin user not in docker group
+#      Run: groups admin
+#      Log out and back in for group changes to apply
+#
+# ============================================================
+
+# ============================================================
+# WHAT NEXT?
+# ============================================================
+# After running this playbook:
+#
+# 1. Verify Docker is working:
+#    SSH to VM1: ssh -i ~/.ssh/klinkr-key.pem admin@52.210.39.239
+#    Run: docker --version
+#    Run: docker ps
+#
+# 2. Test Docker (run a container):
+#    Run: docker run hello-world
+#    Should download and run test container
+#
+# 3. Check Docker service:
+#    Run: systemctl status docker
+#    Should show: "active (running)"
+#
+# 4. View Docker info:
+#    Run: docker info
+#    Shows: containers, images, storage driver, etc.
+#
+# ============================================================
