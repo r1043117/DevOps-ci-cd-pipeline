@@ -107,3 +107,12 @@ temp/
 credentials.json
 secrets.json
 .secrets
+
+# ------------------------------------------------------------
+# PROJECT SPECIFIC - Keep locally, don't push
+# ------------------------------------------------------------
+# Documentation (contains environment-specific info)
+docs/
+
+# Ansible inventory (contains IP addresses)
+ansible/inventory.ini
