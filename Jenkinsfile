@@ -6,7 +6,7 @@ pipeline {
         // CONFIGURATION - Update these values!
         // =========================================
         // Get APP_SERVER IP from: terraform output app_server_public_ip
-        APP_SERVER = 'YOUR_APP_SERVER_IP'
+        APP_SERVER = '52.209.69.177'
         APP_USER = 'admin'
     }
 
@@ -28,7 +28,7 @@ pipeline {
                             sudo docker build -t flask-app:latest . &&
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&
-                            sudo docker run -d --name flask-app --restart unless-stopped -p 5000:5000 flask-app:latest
+                            sudo docker run -d --name flask-app --restart unless-stopped -p 80:80 flask-app:latest
                         '
                     """
                 }
@@ -38,7 +38,7 @@ pipeline {
         stage('Health Check') {
             steps {
                 echo 'Checking if app is running...'
-                sh "curl -f http://${env.APP_SERVER}:5000/health || exit 1"
+                sh "curl -f http://${env.APP_SERVER}:80/health || exit 1"
             }
         }
     }
@@ -46,7 +46,7 @@ pipeline {
     post {
         success {
             echo 'Deployment successful!'
-            echo "App URL: http://${env.APP_SERVER}:5000"
+            echo "App URL: http://${env.APP_SERVER}"
         }
         failure {
             echo 'Deployment failed!'
