@@ -73,6 +73,22 @@
         group: admin
         mode: '0644'
 
+    - name: Copy templates folder to VM1
+      copy:
+        src: ../../flask-app/templates/
+        dest: "{{ app_dir }}/templates/"
+        owner: admin
+        group: admin
+        mode: '0755'
+
+    - name: Copy static folder to VM1
+      copy:
+        src: ../../flask-app/static/
+        dest: "{{ app_dir }}/static/"
+        owner: admin
+        group: admin
+        mode: '0755'
+
     # ========================================================
     # TASK 4: Build Docker Image
     # ========================================================
