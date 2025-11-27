@@ -100,14 +100,6 @@ ssh_key_name = "klinkr-key"  # Change this to YOUR key name
 # SSH Access - Your public IP or allow all (for testing)
 allowed_ssh_cidr = "0.0.0.0/0"  # For security, replace with "YOUR_IP/32"
 
-# Domain (optional - for future use)
-domain_name = "yourdomain.com"
-
-# cPanel (optional - for future DNS automation)
-cpanel_url = "https://your-cpanel-host:2083"
-cpanel_username = "your-username"
-cpanel_api_token = "YOUR-API-TOKEN-HERE"
-```
 
 **Security Tip:** To restrict SSH access to only your IP:
 1. Visit https://whatismyipaddress.com

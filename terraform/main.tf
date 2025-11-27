@@ -124,3 +124,103 @@ resource "aws_instance" "app_server" {
     OS          = "debian-12"          # ADDED: Operating system for easy identification
   }
 }
+
+# ============================================================
+# VM2 - JENKINS SERVER
+# ============================================================
+
+# SECURITY GROUP for Jenkins Server
+resource "aws_security_group" "jenkins_server_sg" {
+  name        = "jenkins-server-sg"
+  description = "Security group for Jenkins CI/CD Server"
+
+  # SSH access
+  ingress {
+    description = "SSH from anywhere"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Jenkins web interface (port 8080)
+  ingress {
+    description = "Jenkins web UI"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound traffic
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "jenkins-server-sg"
+    Environment = "lab"
+    Purpose     = "jenkins-server"
+    ManagedBy   = "terraform"
+  }
+}
+
+# EC2 INSTANCE for Jenkins
+resource "aws_instance" "jenkins_server" {
+  ami           = data.aws_ami.debian12.id
+  instance_type = "t3.micro"
+
+  key_name      = var.ssh_key_name
+
+  vpc_security_group_ids = [aws_security_group.jenkins_server_sg.id]
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  tags = {
+    Name        = "jenkins-server"
+    Environment = "lab"
+    Purpose     = "ci-cd-server"
+    ManagedBy   = "terraform"
+    OS          = "debian-12"
+  }
+}
+
+# ============================================================
+# ELASTIC IPs - Static public IPs that survive instance restarts
+# ============================================================
+# These give you consistent IPs for DNS records.
+# Cost: FREE when attached to running instance
+#       $0.005/hour when NOT attached (if instance is stopped/destroyed)
+#
+# When you destroy everything: EIPs are destroyed too (no ongoing cost)
+# When you redeploy: You get new EIPs, update DNS once
+# ============================================================
+
+resource "aws_eip" "app_server" {
+  instance = aws_instance.app_server.id
+  domain   = "vpc"
+
+  tags = {
+    Name        = "app-server-eip"
+    Environment = "lab"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_eip" "jenkins_server" {
+  instance = aws_instance.jenkins_server.id
+  domain   = "vpc"
+
+  tags = {
+    Name        = "jenkins-server-eip"
+    Environment = "lab"
+    ManagedBy   = "terraform"
+  }
+}

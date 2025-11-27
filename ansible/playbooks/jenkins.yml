@@ -1,0 +1,311 @@
+---
+# JENKINS INSTALLATION - FULLY AUTOMATED
+- name: Install Jenkins CI/CD Server
+  hosts: jenkins_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    jenkins_admin_user: admin
+    jenkins_admin_pass: "{{ vault_jenkins_admin_pass }}"
+    jenkins_plugins:
+      - git
+      - github
+      - ssh-agent
+      - workflow-aggregator
+      - pipeline-stage-view
+      - ssh-credentials
+      - credentials
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Java 17
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    - name: Install required packages
+      apt:
+        name: [curl, gnupg]
+        state: present
+
+    - name: Add Jenkins GPG key
+      shell: curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+      args:
+        creates: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/
+        state: present
+        filename: jenkins
+
+    - name: Update apt cache again
+      apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    # Use systemd override for JAVA_OPTS
+    - name: Create systemd override directory
+      file:
+        path: /etc/systemd/system/jenkins.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure Jenkins to skip setup wizard
+      copy:
+        dest: /etc/systemd/system/jenkins.service.d/override.conf
+        mode: "0644"
+        content: |
+          [Service]
+          Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    # Install plugins BEFORE starting Jenkins
+    - name: Download Jenkins Plugin Manager
+      get_url:
+        url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.13/jenkins-plugin-manager-2.12.13.jar
+        dest: /tmp/jenkins-plugin-manager.jar
+        mode: "0644"
+
+    - name: Install plugins using plugin manager
+      shell: |
+        java -jar /tmp/jenkins-plugin-manager.jar --war /usr/share/java/jenkins.war --plugin-download-directory /var/lib/jenkins/plugins --plugins {{ jenkins_plugins | join(' ') }}
+
+    - name: Set correct ownership on plugins
+      file:
+        path: /var/lib/jenkins/plugins
+        state: directory
+        owner: jenkins
+        group: jenkins
+        recurse: yes
+
+    # Start Jenkins WITHOUT security - we'll add it via CLI
+    - name: Start Jenkins
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Wait for Jenkins to start
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 180
+
+    - name: Wait for Jenkins to be ready
+      uri:
+        url: http://localhost:8080/login
+        status_code: 200
+      register: jenkins_ready
+      until: jenkins_ready.status == 200
+      retries: 30
+      delay: 5
+
+    - name: Wait for initial admin password file
+      wait_for:
+        path: /var/lib/jenkins/secrets/initialAdminPassword
+        state: present
+        timeout: 120
+
+    - name: Read initial admin password
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_pass
+
+    - name: Set initial password fact
+      set_fact:
+        jenkins_initial_pass: "{{ initial_admin_pass.content | b64decode | trim }}"
+
+    - name: Download Jenkins CLI
+      get_url:
+        url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+        dest: /tmp/jenkins-cli.jar
+        mode: "0644"
+
+    # Create admin user using initial admin password
+    - name: Create security setup script
+      copy:
+        dest: /tmp/setup-security.groovy
+        mode: "0644"
+        content: |
+          import jenkins.model.*
+          import hudson.security.*
+          import jenkins.install.*
+
+          def instance = Jenkins.getInstance()
+
+          // Create admin user
+          println "Creating admin user..."
+          def realm = new HudsonPrivateSecurityRealm(false)
+          realm.createAccount("{{ jenkins_admin_user }}", "{{ jenkins_admin_pass }}")
+          instance.setSecurityRealm(realm)
+
+          // Set authorization strategy
+          def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+          strategy.setAllowAnonymousRead(false)
+          instance.setAuthorizationStrategy(strategy)
+
+          // Mark setup as complete
+          instance.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
+
+          instance.save()
+          println "Security configured successfully!"
+
+    - name: Configure security via CLI
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:{{ jenkins_initial_pass }} groovy = < /tmp/setup-security.groovy
+      register: security_result
+
+    - name: Show security setup result
+      debug:
+        var: security_result.stdout_lines
+
+    # Verify login works
+    - name: Wait a moment for security to take effect
+      pause:
+        seconds: 5
+
+    - name: Verify admin login works
+      uri:
+        url: http://localhost:8080/api/json
+        user: "{{ jenkins_admin_user }}"
+        password: "{{ jenkins_admin_pass }}"
+        force_basic_auth: yes
+        status_code: 200
+      register: api_check
+      until: api_check.status == 200
+      retries: 5
+      delay: 3
+
+    # Restart Jenkins to fully load plugins
+    - name: Restart Jenkins to load plugins
+      systemd:
+        name: jenkins
+        state: restarted
+
+    - name: Wait for Jenkins to restart
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 180
+
+    - name: Wait for Jenkins API after restart
+      uri:
+        url: http://localhost:8080/api/json
+        user: "{{ jenkins_admin_user }}"
+        password: "{{ jenkins_admin_pass }}"
+        force_basic_auth: yes
+        status_code: 200
+      register: api_restart
+      until: api_restart.status == 200
+      retries: 30
+      delay: 5
+
+    # Setup SSH credentials
+    - name: Create .ssh directory for jenkins
+      file:
+        path: /var/lib/jenkins/.ssh
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: "0700"
+
+    - name: Copy SSH key to Jenkins
+      copy:
+        src: "{{ ansible_ssh_private_key_file }}"
+        dest: /var/lib/jenkins/.ssh/app-server-key.pem
+        owner: jenkins
+        group: jenkins
+        mode: "0600"
+
+    - name: Read SSH key content
+      slurp:
+        src: /var/lib/jenkins/.ssh/app-server-key.pem
+      register: ssh_key_content
+
+    - name: Create SSH credential script
+      copy:
+        dest: /tmp/add-ssh-cred.groovy
+        mode: "0644"
+        content: |
+          import jenkins.model.*
+          import com.cloudbees.plugins.credentials.*
+          import com.cloudbees.plugins.credentials.domains.*
+          import com.cloudbees.jenkins.plugins.sshcredentials.impl.*
+
+          def key = new String("{{ ssh_key_content.content }}".decodeBase64())
+          def store = Jenkins.instance.getExtensionList("com.cloudbees.plugins.credentials.SystemCredentialsProvider")[0].getStore()
+          def domain = Domain.global()
+
+          // Remove existing if present
+          store.getCredentials(domain).findAll { it.id == "vm1-ssh-key" }.each {
+            store.removeCredentials(domain, it)
+          }
+
+          // Add credential
+          store.addCredentials(domain, new BasicSSHUserPrivateKey(
+            CredentialsScope.GLOBAL,
+            "vm1-ssh-key",
+            "admin",
+            new BasicSSHUserPrivateKey.DirectEntryPrivateKeySource(key),
+            "",
+            "SSH key for App Server"
+          ))
+          println "SSH credential added!"
+
+    - name: Add SSH credential to Jenkins
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth {{ jenkins_admin_user }}:{{ jenkins_admin_pass }} groovy = < /tmp/add-ssh-cred.groovy
+      register: ssh_result
+
+    - name: Show SSH credential result
+      debug:
+        var: ssh_result.stdout_lines
+
+    - name: Cleanup temporary files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/setup-security.groovy
+        - /tmp/add-ssh-cred.groovy
+        - /tmp/jenkins-plugin-manager.jar
+
+    - name: Display Jenkins info
+      debug:
+        msg:
+          - ""
+          - "=========================================="
+          - "  JENKINS READY!"
+          - "=========================================="
+          - ""
+          - "URL: http://{{ ansible_host }}:8080"
+          - "Username: {{ jenkins_admin_user }}"
+          - "Password: (from vault)"
+          - "SSH Credential ID: vm1-ssh-key"
+          - ""
+          - "=========================================="
+          - "  MANUAL STEP: Create Pipeline Job"
+          - "=========================================="
+          - ""
+          - "1. Open Jenkins URL above"
+          - "2. New Item > flask-deploy > Pipeline"
+          - "3. Pipeline > Definition: Pipeline script from SCM"
+          - "4. SCM: Git"
+          - "5. Repository URL: YOUR_GITHUB_REPO"
+          - "6. Branch: */main"
+          - "7. Script Path: Jenkinsfile"
+          - "8. Save"
+          - "=========================================="

@@ -31,26 +31,3 @@ ssh_key_name = "my-key"
 #   "1.2.3.4/32" - Specific IP address
 allowed_ssh_cidr = "auto"
 
-# -----------------------------------------------------------------------------
-# DOMAIN CONFIGURATION
-# -----------------------------------------------------------------------------
-
-# Your base domain (creates: app.yourdomain.com and jenkins.yourdomain.com)
-domain_name = "yourdomain.com"
-
-# -----------------------------------------------------------------------------
-# CPANEL DNS CONFIGURATION
-# -----------------------------------------------------------------------------
-# To get your API token:
-# 1. Log in to cPanel
-# 2. Go to: Security -> Manage API Tokens
-# 3. Click "Create" and copy the token
-
-# Your cPanel URL (include https:// and port :2083)
-cpanel_url = "https://your-cpanel-host:2083"
-
-# Your cPanel username
-cpanel_username = "your-username"
-
-# Your cPanel API token
-cpanel_api_token = "YOUR-API-TOKEN-HERE"

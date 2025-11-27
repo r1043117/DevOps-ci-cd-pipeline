@@ -20,9 +20,9 @@ crash.log
 crash.*.log
 
 # Variable files with actual values (use .example for templates)
-# Uncomment if you want to exclude tfvars:
-# *.tfvars
-# !*.tfvars.example
+terraform.tfvars
+*.auto.tfvars
+!*.tfvars.example
 
 # Override files
 override.tf

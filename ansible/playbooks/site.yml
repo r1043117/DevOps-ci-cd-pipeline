@@ -1,6 +1,6 @@
 ---
 # ============================================================
-# MASTER PLAYBOOK - Complete Flask App Deployment
+# MASTER PLAYBOOK - Complete Infrastructure Deployment
 # ============================================================
 # Runs all playbooks in correct order for full deployment
 #
@@ -15,3 +15,6 @@
 
 - name: "STEP 3 - Deploy Flask Application"
   import_playbook: deploy-flask.yml
+
+- name: "STEP 4 - Install Jenkins CI/CD Server"
+  import_playbook: jenkins.yml
