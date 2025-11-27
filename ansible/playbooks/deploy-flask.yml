@@ -14,7 +14,7 @@
   vars:
     app_name: flask-app
     app_dir: "/opt/{{ app_name }}"
-    app_port: 5000
+    app_port: 80
     container_name: "{{ app_name }}"
     image_name: "{{ app_name }}:latest"
 
@@ -153,7 +153,8 @@
 
     - name: Display health check result
       debug:
-        msg: "Health check passed: {{ health_check.json }}"
+        msg: "Health check passed: {{ health_check.content | default('skipped in check mode') }}"
+      when: not ansible_check_mode
 
     # ========================================================
     # TASK 9: Display Deployment Information
