@@ -37,6 +37,8 @@ pipeline {
 
         stage('Health Check') {
             steps {
+                echo 'Waiting for container to start...'
+                sh 'sleep 10'
                 echo 'Checking if app is running...'
                 sh "curl -f http://${env.APP_SERVER}:80/health || exit 1"
             }
