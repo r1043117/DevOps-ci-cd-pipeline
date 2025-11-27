@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{{ title }}</h1>
+        </header>
+
+        <main>
+            <div class="card">
+                <h2>Welcome!</h2>
+                <p>{{ message }}</p>
+            </div>
+
+            <div class="card">
+                <h2>Server Info</h2>
+                <ul>
+                    <li><strong>Environment:</strong> {{ environment }}</li>
+                    <li><strong>Version:</strong> {{ version }}</li>
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            <p>Deployed via Jenkins CI/CD Pipeline</p>
+        </footer>
+    </div>
+</body>
+</html>

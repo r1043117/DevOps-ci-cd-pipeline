@@ -30,8 +30,10 @@ RUN useradd -m -u 1000 flaskuser && \
 # Copy Python dependencies from builder
 COPY --from=builder --chown=flaskuser:flaskuser /root/.local /home/flaskuser/.local
 
-# Copy application code
+# Copy application code and templates
 COPY --chown=flaskuser:flaskuser app.py .
+COPY --chown=flaskuser:flaskuser templates/ templates/
+COPY --chown=flaskuser:flaskuser static/ static/
 
 # Update PATH to include user site-packages
 ENV PATH=/home/flaskuser/.local/bin:$PATH
