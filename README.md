@@ -165,24 +165,47 @@ After Ansible completes:
 
 | Service | URL |
 |---------|-----|
-| Flask App | `http://APP_SERVER_IP:5000` |
+| Flask App | `http://APP_SERVER_IP` (port 80) |
 | Jenkins | `http://JENKINS_SERVER_IP:8080` |
 
 ---
 
 ## Setting Up Jenkins Pipeline
 
+### Install Git on Jenkins Server
+
+SSH into Jenkins and install git (required for pipeline):
+```bash
+ssh -i ~/.ssh/my-key.pem admin@JENKINS_IP
+sudo apt-get update && sudo apt-get install -y git
+exit
+```
+
+### Add SSH Credentials in Jenkins
+
 1. Open Jenkins: `http://JENKINS_IP:8080`
-2. Login with credentials from vault
-3. **New Item** → Name: `flask-deploy` → **Pipeline**
-4. **Build Triggers** → Check **GitHub hook trigger for GITScm polling**
-5. **Pipeline**:
+2. Login with credentials from vault (username: `admin`)
+3. Go to **Manage Jenkins** → **Credentials**
+4. Click **(global)** → **Add Credentials**
+5. Fill in:
+   - Kind: **SSH Username with private key**
+   - ID: `vm1-ssh-key`
+   - Description: `SSH key for App Server`
+   - Username: `admin`
+   - Private Key: **Enter directly** → paste contents of `~/.ssh/my-key.pem`
+6. Click **Create**
+
+### Create Pipeline Job
+
+1. Click **New Item** → Name: `flask-deploy` → **Pipeline**
+2. **Build Triggers** → Check **GitHub hook trigger for GITScm polling**
+3. **Pipeline**:
    - Definition: Pipeline script from SCM
    - SCM: Git
    - Repository URL: `https://github.com/r1043117/DevOps-ci-cd-pipeline.git`
    - Branch: `*/main`
    - Script Path: `Jenkinsfile`
-6. **Save**
+4. **Save**
 
 ### Configure GitHub Webhook
 
@@ -218,8 +241,9 @@ Commit and push - Jenkins will auto-deploy!
 ├── ansible/               # Configuration Management
 │   ├── playbooks/
 │   │   ├── site.yml      # Master playbook
-│   │   ├── docker.yml    # Docker installation
-│   │   └── jenkins.yml   # Jenkins installation
+│   │   ├── docker.yml        # Docker installation
+│   │   ├── jenkins.yml       # Jenkins installation
+│   │   └── deploy-flask.yml  # Flask app deployment
 │   ├── group_vars/
 │   │   └── all/
 │   │       ├── vars.yml  # Variables
@@ -267,6 +291,18 @@ cd terraform
 terraform destroy
 # Type 'yes' to confirm
 ```
+
+---
+
+## Files to Update After Redeploy
+
+After each `terraform destroy` and `terraform apply`, update these files with new IPs:
+
+| File | What to Update |
+|------|----------------|
+| `ansible/inventory.ini` | VM1 and VM2 IP addresses |
+| `Jenkinsfile` | APP_SERVER IP (line 9) |
+| GitHub Webhook | Jenkins URL with new IP |
 
 ---
 
