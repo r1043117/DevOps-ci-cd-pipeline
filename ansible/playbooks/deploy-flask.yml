@@ -60,6 +60,14 @@
         state: absent
       when: not ansible_check_mode
 
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: admin
+        group: admin
+        mode: '0755'
+
     - name: Clone repository from GitHub
       git:
         repo: "https://github.com/r1043117/DevOps-ci-cd-pipeline.git"
