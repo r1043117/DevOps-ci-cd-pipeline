@@ -6,12 +6,12 @@ pipeline {
         // CONFIGURATION - Update these values!
         // =========================================
         // Get APP_SERVER IP from: terraform output app_server_public_ip
-        APP_SERVER = '52.209.69.177'
+        APP_SERVER = '63.35.65.0'
         APP_USER = 'admin'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout') 
             steps {
                 echo 'Pulling code from GitHub...'
                 checkout scm
