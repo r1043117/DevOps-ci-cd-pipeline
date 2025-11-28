@@ -8,7 +8,7 @@ Automated infrastructure deployment using Terraform, Ansible, and Jenkins.
 |-----------|-------------|
 | **VM1 - App Server** | Debian 12 EC2 running Flask app in Docker |
 | **VM2 - Jenkins** | Debian 12 EC2 running Jenkins CI/CD |
-| **Pipeline** | Auto-deploys Flask app on git push |
+| **Pipeline** | Auto-deploys Flask app on git push (git pull → docker build → deploy) |
 
 ---
 
@@ -172,15 +172,6 @@ After Ansible completes:
 
 ## Setting Up Jenkins Pipeline
 
-### Install Git on Jenkins Server
-
-SSH into Jenkins and install git (required for pipeline):
-```bash
-ssh -i ~/.ssh/my-key.pem admin@JENKINS_IP
-sudo apt-get update && sudo apt-get install -y git
-exit
-```
-
 ### Add SSH Credentials in Jenkins
 
 1. Open Jenkins: `http://JENKINS_IP:8080`
@@ -226,6 +217,33 @@ environment {
 ```
 
 Commit and push - Jenkins will auto-deploy!
+
+---
+
+## How the CI/CD Pipeline Works
+
+When you push code to GitHub:
+
+1. **GitHub Webhook** triggers Jenkins
+2. **Jenkins** SSHs to VM1 (App Server)
+3. **Git Pull** fetches latest code from GitHub
+4. **Docker Build** creates new image from `flask-app/`
+5. **Docker Run** deploys the new container
+6. **Health Check** verifies the app is running
+
+```
+┌──────────┐    push     ┌──────────┐   webhook   ┌──────────┐
+│  Local   │ ─────────▶  │  GitHub  │ ──────────▶ │ Jenkins  │
+│   Dev    │             │   Repo   │             │  (VM2)   │
+└──────────┘             └──────────┘             └────┬─────┘
+                                                       │ SSH
+                                                       ▼
+                                                 ┌──────────┐
+                                                 │ App VM1  │
+                                                 │ git pull │
+                                                 │ docker   │
+                                                 └──────────┘
+```
 
 ---
 
@@ -276,8 +294,11 @@ ansible-playbook playbooks/jenkins.yml        # Run only Jenkins
 ansible all -m ping                            # Test connections
 ansible-vault edit group_vars/all/vault.yml   # Edit secrets
 
-# Git
+# Git - trigger CI/CD pipeline
 git add -A && git commit -m "message" && git push
+
+# Trigger build without changes (empty commit)
+git commit --allow-empty -m "Trigger build" && git push
 ```
 
 ---
