@@ -15,7 +15,7 @@ app = Flask(__name__)
 SITE_TITLE = "My DevOps Project"
 WELCOME_MESSAGE = "This Flask app is deployed automatically via Jenkins CI/CD!"
 ENVIRONMENT = "Production"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 # ===========================================
 
 
