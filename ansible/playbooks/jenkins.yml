@@ -30,7 +30,7 @@
 
     - name: Install required packages
       apt:
-        name: [curl, gnupg]
+        name: [curl, gnupg, git]
         state: present
 
     - name: Add Jenkins GPG key
