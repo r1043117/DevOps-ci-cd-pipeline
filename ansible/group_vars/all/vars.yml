@@ -13,7 +13,7 @@
 app_name: flask-app
 
 # Application port (where Flask will listen)
-app_port: 5000
+app_port: 80
 
 # Application environment (development, staging, production)
 app_environment: production
@@ -38,11 +38,11 @@ app_group: flask-user
 #       Docker container: flask-app-container
 #       Makes it easy to change the name everywhere at once
 #
-# app_port: 5000
-#   └─> Flask's default port (accessible from outside)
+# app_port: 80
+#   └─> HTTP standard port (accessible from outside)
 #       Security group must allow this port
-#       Access URL: http://52.210.39.239:5000
-#       Can be changed if port conflict exists
+#       Access URL: http://YOUR_APP_SERVER_IP
+#       Using port 80 avoids firewall issues on some networks
 #
 # app_environment: "production"
 #   └─> Controls Flask behavior
