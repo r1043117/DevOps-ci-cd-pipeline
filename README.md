@@ -323,7 +323,7 @@ After each `terraform destroy` and `terraform apply`, update these files with ne
 |------|----------------|
 | `ansible/inventory.ini` | VM1 and VM2 IP addresses |
 | `Jenkinsfile` | APP_SERVER IP (line 9) |
-| GitHub Webhook | Jenkins URL with new IP |
+| GitHub Webhook | Jenkins URL with new IP (e.g., `http://NEW_JENKINS_IP:8080/github-webhook/`) |
 
 ---
 
