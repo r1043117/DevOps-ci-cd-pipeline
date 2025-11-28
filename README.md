@@ -140,10 +140,14 @@ vm1 ansible_host=YOUR_APP_SERVER_IP ansible_user=admin ansible_ssh_private_key_f
 vm2 ansible_host=YOUR_JENKINS_SERVER_IP ansible_user=admin ansible_ssh_private_key_file=~/.ssh/my-key.pem
 ```
 
-### Step 5: Create Vault Password
+### Step 5: Create Vault Password and Fix Permissions
 
 ```bash
-# Create vault password file
+# Fix directory permissions (important for Ansible)
+chmod 755 ~/cicd-aws-terraform
+chmod 755 ~/cicd-aws-terraform/ansible
+
+# Create vault password file with secure permissions
 echo "your-secret-password" > .vault_pass.txt
 chmod 600 .vault_pass.txt
 
@@ -340,11 +344,28 @@ ssh -i ~/.ssh/my-key.pem admin@IP_ADDRESS
 
 ### Ansible Vault Error
 ```bash
-# Make sure vault password file exists
-cat ansible/.vault_pass.txt
+# Make sure vault password file exists and has correct permissions
+ls -la ansible/.vault_pass.txt
+# Should show: -rw------- (600 permissions)
+
+# Fix permissions if needed
+chmod 600 ansible/.vault_pass.txt
 
 # Re-encrypt vault if needed
 ansible-vault rekey group_vars/all/vault.yml
+```
+
+### Ansible "No Hosts Matched" or Permission Warnings
+```bash
+# Fix world-writable directory warning
+chmod 755 ~/cicd-aws-terraform
+chmod 755 ~/cicd-aws-terraform/ansible
+
+# Make sure inventory file is specified
+ansible all -i inventory.ini -m ping
+
+# Verify inventory is readable
+ansible-inventory -i inventory.ini --list
 ```
 
 ### Jenkins Not Accessible
