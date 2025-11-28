@@ -18,13 +18,27 @@ pipeline {
             }
         }
 
+        stage('Pull Latest Code') {
+            steps {
+                echo "Pulling latest code on ${env.APP_SERVER}..."
+                sshagent(['vm1-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${env.APP_USER}@${env.APP_SERVER} '
+                            cd /opt/flask-app &&
+                            git pull origin main
+                        '
+                    """
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image on ${env.APP_SERVER}..."
                 sshagent(['vm1-ssh-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${env.APP_USER}@${env.APP_SERVER} '
-                            cd /opt/flask-app &&
+                            cd /opt/flask-app/flask-app &&
                             sudo docker build -t flask-app:latest . &&
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&

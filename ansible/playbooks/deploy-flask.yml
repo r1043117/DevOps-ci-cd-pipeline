@@ -46,57 +46,43 @@
         mode: '0755'
 
     # ========================================================
-    # TASK 3: Copy Flask Application Files
+    # TASK 3: Clone Flask Application from GitHub
     # ========================================================
 
-    - name: Copy app.py to VM1
-      copy:
-        src: ../../flask-app/app.py
-        dest: "{{ app_dir }}/app.py"
-        owner: admin
-        group: admin
-        mode: '0644'
+    - name: Install git
+      apt:
+        name: git
+        state: present
 
-    - name: Copy requirements.txt to VM1
-      copy:
-        src: ../../flask-app/requirements.txt
-        dest: "{{ app_dir }}/requirements.txt"
-        owner: admin
-        group: admin
-        mode: '0644'
+    - name: Remove existing app directory if not a git repo
+      file:
+        path: "{{ app_dir }}"
+        state: absent
+      when: not ansible_check_mode
 
-    - name: Copy Dockerfile to VM1
-      copy:
-        src: ../../flask-app/Dockerfile
-        dest: "{{ app_dir }}/Dockerfile"
-        owner: admin
-        group: admin
-        mode: '0644'
+    - name: Clone repository from GitHub
+      git:
+        repo: "https://github.com/r1043117/DevOps-ci-cd-pipeline.git"
+        dest: "{{ app_dir }}"
+        version: main
+        force: yes
+      become_user: admin
 
-    - name: Copy templates folder to VM1
-      copy:
-        src: ../../flask-app/templates/
-        dest: "{{ app_dir }}/templates/"
+    - name: Set ownership of app directory
+      file:
+        path: "{{ app_dir }}"
         owner: admin
         group: admin
-        mode: '0755'
-
-    - name: Copy static folder to VM1
-      copy:
-        src: ../../flask-app/static/
-        dest: "{{ app_dir }}/static/"
-        owner: admin
-        group: admin
-        mode: '0755'
+        recurse: yes
 
     # ========================================================
     # TASK 4: Build Docker Image
     # ========================================================
 
     - name: Build Flask Docker image
-      command: docker build -t {{ image_name }} {{ app_dir }}
+      command: docker build -t {{ image_name }} {{ app_dir }}/flask-app
       args:
-        chdir: "{{ app_dir }}"
+        chdir: "{{ app_dir }}/flask-app"
       register: build_result
 
     - name: Display build status
