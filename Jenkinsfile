@@ -6,7 +6,7 @@ pipeline {
         // CONFIGURATION - Update these values!
         // =========================================
         // Get APP_SERVER IP from: terraform output app_server_public_ip
-        APP_SERVER = '52.211.132.236'
+        APP_SERVER = '63.32.9.36/'
         APP_USER = 'admin'
     }
 
