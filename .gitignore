@@ -116,3 +116,10 @@ docs/
 
 # Ansible inventory (contains IP addresses)
 ansible/inventory.ini
+
+# Backup files
+*.backup
+
+# Ansible collections
+collections/
+*.tar.gz

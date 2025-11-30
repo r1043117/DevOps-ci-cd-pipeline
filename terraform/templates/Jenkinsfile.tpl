@@ -25,8 +25,8 @@ pipeline {
         //   app_server_ip  -> aws_eip.app_server.public_ip
         //   ssh_user       -> "admin" (Debian default)
         // =========================================
-        APP_SERVER = '63.32.68.180'
-        APP_USER = 'admin'
+        APP_SERVER = '${app_server_ip}'
+        APP_USER = '${ssh_user}'
     }
 
     stages {
@@ -39,10 +39,10 @@ pipeline {
 
         stage('Pull Latest Code') {
             steps {
-                echo "Pulling latest code on ${env.APP_SERVER}..."
+                echo "Pulling latest code on $${env.APP_SERVER}..."
                 sshagent(['vm1-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${env.APP_USER}@${env.APP_SERVER} '
+                        ssh -o StrictHostKeyChecking=no $${env.APP_USER}@$${env.APP_SERVER} '
                             cd /opt/flask-app &&
                             git pull origin main
                         '
@@ -53,10 +53,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image on ${env.APP_SERVER}..."
+                echo "Building Docker image on $${env.APP_SERVER}..."
                 sshagent(['vm1-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${env.APP_USER}@${env.APP_SERVER} '
+                        ssh -o StrictHostKeyChecking=no $${env.APP_USER}@$${env.APP_SERVER} '
                             cd /opt/flask-app/flask-app &&
                             sudo docker build -t flask-app:latest . &&
                             sudo docker stop flask-app || true &&
@@ -73,7 +73,7 @@ pipeline {
                 echo 'Waiting for container to start...'
                 sh 'sleep 10'
                 echo 'Checking if app is running...'
-                sh "curl -f http://${env.APP_SERVER}:80/health || exit 1"
+                sh "curl -f http://$${env.APP_SERVER}:80/health || exit 1"
             }
         }
     }
@@ -81,7 +81,7 @@ pipeline {
     post {
         success {
             echo 'Deployment successful!'
-            echo "App URL: http://${env.APP_SERVER}"
+            echo "App URL: http://$${env.APP_SERVER}"
         }
         failure {
             echo 'Deployment failed!'
