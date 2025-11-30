@@ -25,11 +25,53 @@
                     <li><strong>Version:</strong> {{ version }}</li>
                 </ul>
             </div>
+            <!-- Pipeline Status Card -->
+            <div class="card pipeline-card">
+                <h2>Pipeline Status</h2>
+                <div id="pipeline-container">
+                    <div class="pipeline-info">
+                        <span id="build-number">Build: --</span>
+                        <span id="build-status" class="status-badge">Loading...</span>
+                    </div>
+                    <div class="pipeline-stages" id="pipeline-stages">
+                        <!-- Stages will be populated by JavaScript -->
+                        <div class="stage" data-stage="Checkout">
+                            <div class="stage-box">
+                                <span class="stage-name">Checkout</span>
+                                <span class="stage-icon">?</span>
+                            </div>
+                        </div>
+                        <div class="stage-arrow">→</div>
+                        <div class="stage" data-stage="Pull Latest Code">
+                            <div class="stage-box">
+                                <span class="stage-name">Pull</span>
+                                <span class="stage-icon">?</span>
+                            </div>
+                        </div>
+                        <div class="stage-arrow">→</div>
+                        <div class="stage" data-stage="Build Docker Image">
+                            <div class="stage-box">
+                                <span class="stage-name">Build</span>
+                                <span class="stage-icon">?</span>
+                            </div>
+                        </div>
+                        <div class="stage-arrow">→</div>
+                        <div class="stage" data-stage="Health Check">
+                            <div class="stage-box">
+                                <span class="stage-name">Health</span>
+                                <span class="stage-icon">?</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pipeline-duration" id="pipeline-duration"></div>
+                </div>
+            </div>
         </main>
 
         <footer>
             <p>Deployed via! Jenkins CI/CD Pipeline</p>
         </footer>
     </div>
+    <script src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
 </body>
 </html>

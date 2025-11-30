@@ -75,6 +75,111 @@ footer {
     font-size: 0.9rem;
 }
 
+/* Pipeline Styles */
+.pipeline-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.pipeline-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#build-number {
+    font-weight: bold;
+    color: #1e3c72;
+}
+
+.status-badge {
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.success { background: #28a745; color: white; }
+.status-badge.failed { background: #dc3545; color: white; }
+.status-badge.running { background: #ffc107; color: #333; animation: pulse 1.5s infinite; }
+.status-badge.unknown { background: #6c757d; color: white; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.pipeline-stages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 20px 0;
+}
+
+.stage-arrow {
+    color: #1e3c72;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.stage-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    background: #f8f9fa;
+    min-width: 80px;
+    transition: all 0.3s ease;
+}
+
+.stage-name {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.stage-icon {
+    font-size: 1.2rem;
+}
+
+.stage.success .stage-box {
+    border-color: #28a745;
+    background: #d4edda;
+}
+.stage.success .stage-icon::before { content: "✓"; color: #28a745; }
+
+.stage.failed .stage-box {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+.stage.failed .stage-icon::before { content: "✗"; color: #dc3545; }
+
+.stage.running .stage-box {
+    border-color: #ffc107;
+    background: #fff3cd;
+    animation: pulse 1.5s infinite;
+}
+.stage.running .stage-icon::before { content: "⟳"; color: #856404; }
+
+.stage.pending .stage-box {
+    border-color: #6c757d;
+    background: #e9ecef;
+}
+.stage.pending .stage-icon::before { content: "○"; color: #6c757d; }
+
+.pipeline-duration {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     header h1 {
@@ -83,5 +188,13 @@ footer {
 
     .card {
         padding: 20px;
+    }
+
+    .pipeline-stages {
+        flex-direction: column;
+    }
+
+    .stage-arrow {
+        transform: rotate(90deg);
     }
 }

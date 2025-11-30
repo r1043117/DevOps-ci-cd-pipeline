@@ -27,6 +27,7 @@ pipeline {
         // =========================================
         APP_SERVER = '63.32.68.180'
         APP_USER = 'admin'
+	JENKINS_API_TOKEN = credentials('jenkins-api-token')
     }
 
     stages {
@@ -61,7 +62,8 @@ pipeline {
                             sudo docker build -t flask-app:latest . &&
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&
-                            sudo docker run -d --name flask-app --restart unless-stopped -p 80:80 flask-app:latest
+                            sudo docker run -d --name flask-app --restart unless-stopped -e JENKINS_TOKEN=${JENKINS_API_TOKEN} -p 80:80 flask-app:latest
+
                         '
                     """
                 }
