@@ -85,8 +85,9 @@ resource "local_file" "ansible_inventory" {
 
 resource "local_file" "jenkinsfile" {
   content = templatefile("${path.module}/templates/Jenkinsfile.tpl", {
-    app_server_ip = aws_eip.app_server.public_ip  # VM1's Elastic IP
-    ssh_user      = var.ssh_user                   # "admin" for Debian
+    app_server_ip     = aws_eip.app_server.public_ip      # VM1's Elastic IP
+    jenkins_server_ip = aws_eip.jenkins_server.public_ip  # VM2's Elastic IP
+    ssh_user          = var.ssh_user                       # "admin" for Debian
   })
 
   filename = "${path.module}/../Jenkinsfile"

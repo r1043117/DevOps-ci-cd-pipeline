@@ -62,7 +62,7 @@ pipeline {
                             sudo docker build -t flask-app:latest . &&
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&
-                            sudo docker run -d --name flask-app --restart unless-stopped -e JENKINS_TOKEN='"\$${JENKINS_API_TOKEN}"' -p 80:80 flask-app:latest
+                            sudo docker run -d --name flask-app --restart unless-stopped -e JENKINS_TOKEN='"\$${JENKINS_API_TOKEN}"' -e JENKINS_URL='http://${jenkins_server_ip}:8080' -p 80:80 flask-app:latest
                         '
                     """
                 }
