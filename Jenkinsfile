@@ -25,7 +25,7 @@ pipeline {
         //   app_server_ip  -> aws_eip.app_server.public_ip
         //   ssh_user       -> "admin" (Debian default)
         // =========================================
-        APP_SERVER = '63.32.68.180'
+        APP_SERVER = '54.76.81.79'
         APP_USER = 'admin'
     }
 
