@@ -1,0 +1,16 @@
+# TERRAFORM VARIABELEN VOORBEELD
+# ============================================================
+# Kopieer dit bestand naar 'terraform.tfvars' en pas de
+# waardes aan naar jouw situatie.
+#
+# BELANGRIJK: terraform.tfvars staat in .gitignore en wordt
+# NIET gecommit naar git (bevat mogelijk gevoelige info)
+# ============================================================
+
+# AWS Regio - waar je servers worden aangemaakt
+# Opties: eu-west-1 (Ierland), eu-central-1 (Frankfurt), etc.
+aws_region = "eu-west-1"
+
+# Naam van je SSH key pair in AWS
+# Dit moet overeenkomen met de key die je hebt aangemaakt in AWS Console
+ssh_key_name = "klinkr-key"
