@@ -7,7 +7,7 @@
 flask_app_name: "flask-app"
 flask_app_port: 80
 flask_app_repo: "https://github.com/r1043117/DevOps-ci-cd-pipeline.git"
-flask_app_branch: "main"
+flask_app_branch: "Test-Documentation"
 flask_app_path: "/opt/flask-app"
 
 
