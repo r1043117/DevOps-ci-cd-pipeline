@@ -9,6 +9,7 @@ terraform/.terraform.lock.hcl
 ansible/inventory.ini
 ansible/*.retry
 ansible/group_vars/all/vault.yml
+ansible/.vault_pass.txt
 
 # Generated files
 Jenkinsfile
