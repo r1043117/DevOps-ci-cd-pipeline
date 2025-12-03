@@ -1,0 +1,70 @@
+/* Flask CI/CD Demo Styling */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #ffffff;
+    min-height: 100vh;
+    padding: 40px 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 40px;
+    color: #4ecca3;
+}
+
+h2 {
+    color: #4ecca3;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.info-box, .endpoints {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-box p, .endpoints p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+ul {
+    margin-left: 25px;
+    margin-top: 10px;
+}
+
+li {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+a {
+    color: #4ecca3;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+strong {
+    color: #4ecca3;
+}
