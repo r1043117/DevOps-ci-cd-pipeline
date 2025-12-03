@@ -1,0 +1,25 @@
+# GEDEELDE VARIABELEN
+# Deze variabelen zijn beschikbaar in ALLE playbooks.
+# Handig voor waardes die op meerdere plekken gebruikt worden.
+
+
+# --- FLASK APPLICATIE ---
+flask_app_name: "flask-app"
+flask_app_port: 80
+flask_app_repo: "https://github.com/r1043117/DevOps-ci-cd-pipeline.git"
+flask_app_branch: "main"
+flask_app_path: "/opt/flask-app"
+
+
+# --- DOCKER ---
+docker_compose_version: "2.24.0"
+
+
+# --- JENKINS ---
+jenkins_http_port: 8080
+jenkins_admin_user: "admin"
+# Het Jenkins wachtwoord staat in vault.yml (versleuteld)
+
+
+# --- SSH ---
+ssh_key_name: "klinkr-key"

@@ -1,0 +1,30 @@
+# ANSIBLE INVENTORY VOORBEELD
+
+# Dit bestand vertelt Ansible welke servers er zijn en hoe
+# er verbinding mee gemaakt moet worden.
+
+# GEBRUIK:
+# 1. Kopieer dit bestand naar 'inventory.ini'
+# 2. Vervang de IP adressen met de echte IPs uit terraform output
+# 3. Pas het pad naar je SSH key aan indien nodig
+
+# Later automatiseren we dit met Terraform templates!
+
+
+
+# --- APP SERVERS ---
+# Hier staan de servers waarop onze Flask applicatie draait
+[app_servers]
+vm1 ansible_host=JOUW_APP_SERVER_IP ansible_user=admin ansible_ssh_private_key_file=~/.ssh/klinkr-key.pem
+
+
+# --- JENKINS SERVERS ---
+# Hier staat onze CI/CD server
+[jenkins_servers]
+vm2 ansible_host=JOUW_JENKINS_SERVER_IP ansible_user=admin ansible_ssh_private_key_file=~/.ssh/klinkr-key.pem
+
+
+# --- GLOBALE VARIABELEN ---
+# Deze instellingen gelden voor alle servers
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

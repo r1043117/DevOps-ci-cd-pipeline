@@ -1,0 +1,13 @@
+# ANSIBLE VAULT VOORBEELD
+# Dit bestand bevat gevoelige informatie zoals wachtwoorden.
+#
+# GEBRUIK:
+# 1. Kopieer naar 'vault.yml'
+# 2. Vul je eigen wachtwoorden in
+# 3. Versleutel met: ansible-vault encrypt vault.yml
+#
+# BELANGRIJK: vault.yml staat in .gitignore (wordt niet gecommit!)
+
+
+# Jenkins admin wachtwoord
+vault_jenkins_admin_password: "KIES_EEN_STERK_WACHTWOORD"
