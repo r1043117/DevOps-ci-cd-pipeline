@@ -1,86 +1,362 @@
 ---
-# JENKINS INSTALLATIE PLAYBOOK
-# Dit playbook installeert Jenkins op de CI/CD server.
-# Jenkins wordt gebruikt om automatisch te bouwen bij elke git push.
+# JENKINS INSTALLATIE - VOLLEDIG GEAUTOMATISEERD
+#
+# Dit playbook installeert en configureert Jenkins volledig automatisch:
+#   - Jenkins installatie met Java 17
+#   - Setup wizard overslaan
+#   - Plugins automatisch installeren
+#   - Admin gebruiker aanmaken
+#   - SSH credentials configureren voor App Server
+#
+# Na uitvoering hoef je alleen nog de pipeline job aan te maken!
 
-- name: Install Jenkins on CI/CD Server
+- name: Jenkins CI/CD Server Installeren
   hosts: jenkins_servers
   become: true
+  gather_facts: true
 
   vars:
-    jenkins_admin_password: "{{ vault_jenkins_admin_password }}"
+    jenkins_admin_user: admin
+    jenkins_admin_pass: "{{ vault_jenkins_admin_pass }}"
+    # Benodigde plugins voor onze CI/CD pipeline
+    jenkins_plugins:
+      - git                    # Git integratie
+      - github                 # GitHub integratie
+      - ssh-agent              # SSH agent voor remote commands
+      - workflow-aggregator    # Pipeline ondersteuning
+      - pipeline-stage-view    # Visuele pipeline weergave
+      - ssh-credentials        # SSH credentials opslag
+      - credentials            # Credentials management
 
   tasks:
-    # Stap 1: Java installeren (Jenkins vereist Java)
-    - name: Update apt cache
+    # ============================================================
+    # STAP 1: BASIS INSTALLATIE
+    # ============================================================
+
+    - name: Apt cache updaten
       apt:
         update_cache: yes
+        cache_valid_time: 3600
 
-    - name: Install Java 17 (required for Jenkins)
+    - name: Java 17 installeren (vereist voor Jenkins)
       apt:
         name: openjdk-17-jdk
         state: present
 
-    # Stap 2: Jenkins repository toevoegen
-    - name: Add Jenkins GPG key
-      shell: |
-        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+    - name: Benodigde packages installeren
+      apt:
+        name: [curl, gnupg, git]
+        state: present
+
+    # ============================================================
+    # STAP 2: JENKINS REPOSITORY TOEVOEGEN
+    # ============================================================
+
+    - name: Jenkins GPG key toevoegen
+      shell: curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
       args:
         creates: /usr/share/keyrings/jenkins-keyring.asc
 
-    - name: Add Jenkins repository
-      shell: |
-        echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
-      args:
-        creates: /etc/apt/sources.list.d/jenkins.list
+    - name: Jenkins repository toevoegen
+      apt_repository:
+        repo: deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/
+        state: present
+        filename: jenkins
 
-    # Stap 3: Jenkins installeren
-    - name: Install Jenkins
+    - name: Apt cache opnieuw updaten
+      apt:
+        update_cache: yes
+
+    - name: Jenkins installeren
       apt:
         name: jenkins
         state: present
-        update_cache: yes
 
-    # Stap 4: Jenkins service starten
-    - name: Start and enable Jenkins service
+    # ============================================================
+    # STAP 3: SETUP WIZARD OVERSLAAN
+    # ============================================================
+    # We configureren Jenkins volledig via Ansible, dus de
+    # interactieve setup wizard is niet nodig.
+
+    - name: Systemd override directory aanmaken
+      file:
+        path: /etc/systemd/system/jenkins.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Jenkins configureren om setup wizard over te slaan
+      copy:
+        dest: /etc/systemd/system/jenkins.service.d/override.conf
+        mode: "0644"
+        content: |
+          [Service]
+          Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
+
+    - name: Systemd herladen
+      systemd:
+        daemon_reload: yes
+
+    # ============================================================
+    # STAP 4: PLUGINS INSTALLEREN (VOOR JENKINS START)
+    # ============================================================
+    # We installeren plugins vooraf zodat ze direct beschikbaar zijn.
+
+    - name: Jenkins Plugin Manager downloaden
+      get_url:
+        url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.13/jenkins-plugin-manager-2.12.13.jar
+        dest: /tmp/jenkins-plugin-manager.jar
+        mode: "0644"
+
+    - name: Plugins installeren via plugin manager
+      shell: |
+        java -jar /tmp/jenkins-plugin-manager.jar --war /usr/share/java/jenkins.war --plugin-download-directory /var/lib/jenkins/plugins --plugins {{ jenkins_plugins | join(' ') }}
+
+    - name: Correcte eigenaar instellen voor plugins
+      file:
+        path: /var/lib/jenkins/plugins
+        state: directory
+        owner: jenkins
+        group: jenkins
+        recurse: yes
+
+    # ============================================================
+    # STAP 5: JENKINS STARTEN
+    # ============================================================
+
+    - name: Jenkins starten
       systemd:
         name: jenkins
         state: started
         enabled: yes
 
-    # Stap 5: Wachten tot Jenkins is opgestart
-    - name: Wait for Jenkins to start
+    - name: Wachten tot Jenkins is opgestart
       wait_for:
         port: 8080
         delay: 10
+        timeout: 180
+
+    - name: Wachten tot Jenkins volledig klaar is
+      uri:
+        url: http://localhost:8080/login
+        status_code: 200
+      register: jenkins_ready
+      until: jenkins_ready.status == 200
+      retries: 30
+      delay: 5
+
+    # ============================================================
+    # STAP 6: ADMIN GEBRUIKER AANMAKEN
+    # ============================================================
+    # We gebruiken het initiële admin wachtwoord om via CLI
+    # een nieuwe admin gebruiker aan te maken met ons eigen wachtwoord.
+
+    - name: Wachten op initieel admin wachtwoord bestand
+      wait_for:
+        path: /var/lib/jenkins/secrets/initialAdminPassword
+        state: present
         timeout: 120
 
-    # Stap 6: Jenkins CLI downloaden
-    - name: Download Jenkins CLI
+    - name: Initieel admin wachtwoord lezen
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_pass
+
+    - name: Initieel wachtwoord opslaan als variabele
+      set_fact:
+        jenkins_initial_pass: "{{ initial_admin_pass.content | b64decode | trim }}"
+
+    - name: Jenkins CLI downloaden
       get_url:
-        url: "http://localhost:8080/jnlpJars/jenkins-cli.jar"
-        dest: /opt/jenkins-cli.jar
-        mode: '0755'
+        url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+        dest: /tmp/jenkins-cli.jar
+        mode: "0644"
+
+    - name: Security setup script aanmaken
+      copy:
+        dest: /tmp/setup-security.groovy
+        mode: "0644"
+        content: |
+          import jenkins.model.*
+          import hudson.security.*
+          import jenkins.install.*
+
+          def instance = Jenkins.getInstance()
+
+          // Admin gebruiker aanmaken
+          println "Admin gebruiker aanmaken..."
+          def realm = new HudsonPrivateSecurityRealm(false)
+          realm.createAccount("{{ jenkins_admin_user }}", "{{ jenkins_admin_pass }}")
+          instance.setSecurityRealm(realm)
+
+          // Autorisatie strategie instellen
+          def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+          strategy.setAllowAnonymousRead(false)
+          instance.setAuthorizationStrategy(strategy)
+
+          // Setup markeren als voltooid
+          instance.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
+
+          instance.save()
+          println "Security succesvol geconfigureerd!"
+
+    - name: Security configureren via CLI
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:{{ jenkins_initial_pass }} groovy = < /tmp/setup-security.groovy
+      register: security_result
+
+    - name: Security setup resultaat tonen
+      debug:
+        var: security_result.stdout_lines
+
+    # ============================================================
+    # STAP 7: ADMIN LOGIN VERIFIËREN
+    # ============================================================
+
+    - name: Even wachten tot security actief is
+      pause:
+        seconds: 5
+
+    - name: Verifiëren dat admin login werkt
+      uri:
+        url: http://localhost:8080/api/json
+        user: "{{ jenkins_admin_user }}"
+        password: "{{ jenkins_admin_pass }}"
+        force_basic_auth: yes
+        status_code: 200
+      register: api_check
+      until: api_check.status == 200
       retries: 5
-      delay: 10
+      delay: 3
 
-    # Stap 7: Git installeren (nodig voor Jenkins pipelines)
-    - name: Install Git
-      apt:
-        name: git
-        state: present
+    # ============================================================
+    # STAP 8: JENKINS HERSTARTEN VOOR PLUGINS
+    # ============================================================
 
-    # Stap 8: Bevestiging
-    - name: Display Jenkins info
+    - name: Jenkins herstarten om plugins te laden
+      systemd:
+        name: jenkins
+        state: restarted
+
+    - name: Wachten tot Jenkins is herstart
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 180
+
+    - name: Wachten tot Jenkins API beschikbaar is na herstart
+      uri:
+        url: http://localhost:8080/api/json
+        user: "{{ jenkins_admin_user }}"
+        password: "{{ jenkins_admin_pass }}"
+        force_basic_auth: yes
+        status_code: 200
+      register: api_restart
+      until: api_restart.status == 200
+      retries: 30
+      delay: 5
+
+    # ============================================================
+    # STAP 9: SSH CREDENTIALS CONFIGUREREN
+    # ============================================================
+    # Deze credentials gebruikt Jenkins om via SSH verbinding te
+    # maken met de App Server voor deployment.
+
+    - name: SSH directory aanmaken voor Jenkins
+      file:
+        path: /var/lib/jenkins/.ssh
+        state: directory
+        owner: jenkins
+        group: jenkins
+        mode: "0700"
+
+    - name: SSH key kopiëren naar Jenkins
+      copy:
+        src: "{{ ansible_ssh_private_key_file }}"
+        dest: /var/lib/jenkins/.ssh/app-server-key.pem
+        owner: jenkins
+        group: jenkins
+        mode: "0600"
+
+    - name: SSH key inhoud lezen
+      slurp:
+        src: /var/lib/jenkins/.ssh/app-server-key.pem
+      register: ssh_key_content
+
+    - name: SSH credential script aanmaken
+      copy:
+        dest: /tmp/add-ssh-cred.groovy
+        mode: "0644"
+        content: |
+          import jenkins.model.*
+          import com.cloudbees.plugins.credentials.*
+          import com.cloudbees.plugins.credentials.domains.*
+          import com.cloudbees.jenkins.plugins.sshcredentials.impl.*
+
+          def key = new String("{{ ssh_key_content.content }}".decodeBase64())
+          def store = Jenkins.instance.getExtensionList("com.cloudbees.plugins.credentials.SystemCredentialsProvider")[0].getStore()
+          def domain = Domain.global()
+
+          // Bestaande credential verwijderen indien aanwezig
+          store.getCredentials(domain).findAll { it.id == "vm1-ssh-key" }.each {
+            store.removeCredentials(domain, it)
+          }
+
+          // Nieuwe credential toevoegen
+          store.addCredentials(domain, new BasicSSHUserPrivateKey(
+            CredentialsScope.GLOBAL,
+            "vm1-ssh-key",
+            "admin",
+            new BasicSSHUserPrivateKey.DirectEntryPrivateKeySource(key),
+            "",
+            "SSH key voor App Server"
+          ))
+          println "SSH credential toegevoegd!"
+
+    - name: SSH credential toevoegen aan Jenkins
+      shell: |
+        java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth {{ jenkins_admin_user }}:{{ jenkins_admin_pass }} groovy = < /tmp/add-ssh-cred.groovy
+      register: ssh_result
+
+    - name: SSH credential resultaat tonen
+      debug:
+        var: ssh_result.stdout_lines
+
+    # ============================================================
+    # STAP 10: OPRUIMEN EN AFRONDEN
+    # ============================================================
+
+    - name: Tijdelijke bestanden opruimen
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/setup-security.groovy
+        - /tmp/add-ssh-cred.groovy
+        - /tmp/jenkins-plugin-manager.jar
+
+    - name: Jenkins informatie tonen
       debug:
         msg:
           - ""
           - "=========================================="
-          - "  JENKINS READY!"
+          - "  JENKINS KLAAR!"
           - "=========================================="
           - ""
           - "URL: http://{{ ansible_host }}:8080"
-          - "Username: admin"
-          - "Password: (from vault)"
+          - "Gebruikersnaam: {{ jenkins_admin_user }}"
+          - "Wachtwoord: (uit vault)"
+          - "SSH Credential ID: vm1-ssh-key"
           - ""
+          - "=========================================="
+          - "  HANDMATIGE STAP: Pipeline Job Aanmaken"
+          - "=========================================="
+          - ""
+          - "1. Open Jenkins URL hierboven"
+          - "2. New Item > flask-deploy > Pipeline"
+          - "3. Pipeline > Definition: Pipeline script from SCM"
+          - "4. SCM: Git"
+          - "5. Repository URL: JOUW_GITHUB_REPO"
+          - "6. Branch: */main"
+          - "7. Script Path: Jenkinsfile"
+          - "8. Save"
           - "=========================================="

@@ -10,4 +10,4 @@
 
 
 # Jenkins admin wachtwoord
-vault_jenkins_admin_password: "KIES_EEN_STERK_WACHTWOORD"
+vault_jenkins_admin_pass: "KIES_EEN_STERK_WACHTWOORD"
