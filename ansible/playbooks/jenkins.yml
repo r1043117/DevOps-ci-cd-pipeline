@@ -1,0 +1,86 @@
+---
+# JENKINS INSTALLATIE PLAYBOOK
+# Dit playbook installeert Jenkins op de CI/CD server.
+# Jenkins wordt gebruikt om automatisch te bouwen bij elke git push.
+
+- name: Install Jenkins on CI/CD Server
+  hosts: jenkins_servers
+  become: true
+
+  vars:
+    jenkins_admin_password: "{{ vault_jenkins_admin_password }}"
+
+  tasks:
+    # Stap 1: Java installeren (Jenkins vereist Java)
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Java 17 (required for Jenkins)
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    # Stap 2: Jenkins repository toevoegen
+    - name: Add Jenkins GPG key
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+      args:
+        creates: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      shell: |
+        echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/jenkins.list
+
+    # Stap 3: Jenkins installeren
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+        update_cache: yes
+
+    # Stap 4: Jenkins service starten
+    - name: Start and enable Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # Stap 5: Wachten tot Jenkins is opgestart
+    - name: Wait for Jenkins to start
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 120
+
+    # Stap 6: Jenkins CLI downloaden
+    - name: Download Jenkins CLI
+      get_url:
+        url: "http://localhost:8080/jnlpJars/jenkins-cli.jar"
+        dest: /opt/jenkins-cli.jar
+        mode: '0755'
+      retries: 5
+      delay: 10
+
+    # Stap 7: Git installeren (nodig voor Jenkins pipelines)
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    # Stap 8: Bevestiging
+    - name: Display Jenkins info
+      debug:
+        msg:
+          - ""
+          - "=========================================="
+          - "  JENKINS READY!"
+          - "=========================================="
+          - ""
+          - "URL: http://{{ ansible_host }}:8080"
+          - "Username: admin"
+          - "Password: (from vault)"
+          - ""
+          - "=========================================="

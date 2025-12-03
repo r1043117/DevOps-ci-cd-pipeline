@@ -1,0 +1,74 @@
+---
+# DOCKER INSTALLATIE PLAYBOOK
+# Dit playbook installeert Docker op de app servers.
+# Docker is nodig om onze Flask app in een container te draaien.
+
+- name: Install Docker on App Servers
+  hosts: app_servers
+  become: true  # Als root uitvoeren (sudo)
+
+  tasks:
+    # Stap 1: Systeem packages updaten
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600  # Cache 1 uur geldig
+
+    # Stap 2: Benodigde packages voor Docker installeren
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    # Stap 3: Docker's officiële GPG key toevoegen
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    # Stap 4: Docker repository toevoegen
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    # Stap 5: Docker installeren
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    # Stap 6: Docker service starten en enablen
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Stap 7: Admin gebruiker toevoegen aan docker groep
+    - name: Add admin user to docker group
+      user:
+        name: admin
+        groups: docker
+        append: yes
+
+    # Stap 8: Verificatie
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Show Docker version
+      debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"

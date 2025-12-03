@@ -1,0 +1,15 @@
+---
+# MASTER PLAYBOOK - Complete Infrastructure Deployment
+# Dit playbook voert alle andere playbooks uit in de juiste volgorde.
+#
+# GEBRUIK: ansible-playbook playbooks/site.yml
+
+
+- name: "STAP 1 - Docker installeren op App Servers"
+  import_playbook: docker.yml
+
+- name: "STAP 2 - Flask Applicatie deployen"
+  import_playbook: deploy-flask.yml
+
+- name: "STAP 3 - Jenkins installeren op CI/CD Server"
+  import_playbook: jenkins.yml

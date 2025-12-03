@@ -1,0 +1,89 @@
+---
+# FLASK APPLICATIE DEPLOYMENT PLAYBOOK
+# Dit playbook deployt onze Flask applicatie naar de app server.
+# De app draait in een Docker container.
+
+- name: Deploy Flask Application
+  hosts: app_servers
+  become: true
+
+  vars:
+    app_name: "{{ flask_app_name }}"
+    app_repo: "{{ flask_app_repo }}"
+    app_branch: "{{ flask_app_branch }}"
+    app_path: "{{ flask_app_path }}"
+
+  tasks:
+    # Stap 1: Git installeren
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+        update_cache: yes
+
+    # Stap 2: Applicatie directory aanmaken
+    - name: Create application directory
+      file:
+        path: "{{ app_path }}"
+        state: directory
+        owner: admin
+        group: admin
+        mode: '0755'
+
+    # Stap 3: Repository clonen of updaten
+    - name: Clone or update repository
+      git:
+        repo: "{{ app_repo }}"
+        dest: "{{ app_path }}"
+        version: "{{ app_branch }}"
+        force: yes
+      become_user: admin
+
+    # Stap 4: Docker image bouwen
+    - name: Build Docker image
+      community.docker.docker_image:
+        name: "{{ app_name }}"
+        tag: latest
+        source: build
+        build:
+          path: "{{ app_path }}/flask-app"
+        state: present
+        force_source: yes
+
+    # Stap 5: Oude container stoppen (als die bestaat)
+    - name: Stop existing container
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        state: absent
+      ignore_errors: yes
+
+    # Stap 6: Nieuwe container starten
+    - name: Start Flask container
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        image: "{{ app_name }}:latest"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "80:80"
+
+    # Stap 7: Wachten tot container draait
+    - name: Wait for container to be healthy
+      wait_for:
+        port: 80
+        delay: 5
+        timeout: 60
+
+    # Stap 8: Bevestiging
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "=========================================="
+          - "Flask Application Deployed Successfully!"
+          - "=========================================="
+          - "Container Name: {{ app_name }}"
+          - "Image: {{ app_name }}:latest"
+          - "Port: 80"
+          - "Application URL: http://{{ ansible_host }}:80"
+          - "Health Check: http://{{ ansible_host }}:80/health"
+          - "=========================================="
