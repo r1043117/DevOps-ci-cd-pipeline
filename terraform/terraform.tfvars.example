@@ -14,3 +14,8 @@ aws_region = "eu-west-1"
 # Naam van je SSH key pair in AWS
 # Dit moet overeenkomen met de key die je hebt aangemaakt in AWS Console
 ssh_key_name = "klinkr-key"
+
+# Gandi Personal Access Token voor DNS beheer
+# Aanmaken via: Gandi Account -> Personal Access Tokens
+# Benodigde permissies: "See and renew domain names" + "Manage domain name technical configurations"
+gandi_api_key = "JOUW_GANDI_API_TOKEN_HIER"

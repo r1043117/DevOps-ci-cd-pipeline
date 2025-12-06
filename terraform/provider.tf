@@ -9,20 +9,36 @@
 # provider nodig om met AWS te communiceren.
 
 
-# Hier geven we aan welke provider plugin Terraform moet downloaden.
-# HashiCorp (de makers van Terraform) onderhouden de officiële AWS provider.
+# Hier geven we aan welke provider plugins Terraform moet downloaden.
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"  # Download van HashiCorp's registry
-      version = "~> 5.0"          # Gebruik versie 5.x (nieuwste stabiele)
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    gandi = {
+      source  = "go-gandi/gandi"
+      version = "~> 2.0"
     }
   }
+}
+
+
+# Gandi API key variabele (voor DNS beheer)
+variable "gandi_api_key" {
+  description = "Gandi Personal Access Token voor DNS beheer"
+  type        = string
+  sensitive   = true
 }
 
 # Hier configureren we de verbinding met AWS.
 # Terraform gebruikt automatisch de credentials die je hebt ingesteld
 # met 'aws configure' (opgeslagen in ~/.aws/credentials)
 provider "aws" {
-  region = var.aws_region  # De regio wordt ingesteld via een variabele (zie main.tf)
+  region = var.aws_region
+}
+
+# Gandi provider voor DNS beheer
+provider "gandi" {
+  personal_access_token = var.gandi_api_key
 }

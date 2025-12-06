@@ -47,9 +47,27 @@ output "jenkins_ssh_command" {
 }
 
 
+# --- DNS INFO ---
+
+output "app_domain_url" {
+  description = "Flask app via domeinnaam"
+  value       = "http://app.${var.domain_name}"
+}
+
+output "jenkins_domain_url" {
+  description = "Jenkins via domeinnaam"
+  value       = "http://jenkins.${var.domain_name}:8080"
+}
+
+
 # --- EXTRA INFO ---
 
 output "debian_ami_used" {
   description = "De Debian 12 AMI die is gebruikt"
   value       = data.aws_ami.debian12.id
+}
+
+output "dns_note" {
+  description = "DNS propagatie notitie"
+  value       = "DNS records zijn aangemaakt. Propagatie kan 5-30 minuten duren."
 }
