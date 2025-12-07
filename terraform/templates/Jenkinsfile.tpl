@@ -12,7 +12,7 @@ pipeline {
 
     environment {
         // Deze waardes worden automatisch ingevuld door Terraform
-        APP_SERVER = '${app_server_ip}'
+        APP_SERVER = 'app.klinkr.be'
         APP_USER = '${ssh_user}'
     }
 
