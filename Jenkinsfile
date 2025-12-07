@@ -44,7 +44,7 @@ pipeline {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${env.APP_USER}@${env.APP_SERVER} '
                             cd /opt/flask-app &&
-                            git pull origin main
+                            git pull origin Test-Documentation
                         '
                     """
                 }
