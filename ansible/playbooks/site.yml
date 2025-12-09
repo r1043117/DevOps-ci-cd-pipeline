@@ -5,9 +5,6 @@
 # GEBRUIK: ansible-playbook playbooks/site.yml
 
 
-- name: "STAP 0 - Basis configuratie (timezone, etc.)"
-  import_playbook: common.yml
-
 - name: "STAP 1 - Docker installeren op App Servers"
   import_playbook: docker.yml
 

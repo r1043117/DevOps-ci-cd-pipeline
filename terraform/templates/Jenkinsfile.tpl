@@ -80,7 +80,7 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no $${APP_USER}@$${APP_SERVER} '
                             sudo docker stop flask-staging || true &&
                             sudo docker rm flask-staging || true &&
-                            sudo docker run -d --name flask-staging --restart unless-stopped -p 8080:80 flask-app:latest
+                            sudo docker run -d --name flask-staging --restart unless-stopped -e TZ=Europe/Brussels -p 8080:80 flask-app:latest
                         '
                     """
                 }
@@ -105,7 +105,7 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no $${APP_USER}@$${APP_SERVER} '
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&
-                            sudo docker run -d --name flask-app --restart unless-stopped -p 80:80 flask-app:latest
+                            sudo docker run -d --name flask-app --restart unless-stopped -e TZ=Europe/Brussels -p 80:80 flask-app:latest
                         '
                     """
                 }
