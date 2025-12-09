@@ -6,6 +6,25 @@
 //   terraform/templates/Jenkinsfile.tpl
 //
 // Na wijzigingen: terraform apply
+//
+// =============================================================================
+// STAGING PIPELINE ARCHITECTUUR
+// =============================================================================
+// Deze pipeline implementeert een staging-naar-productie deployment flow:
+//
+//   1. Code ophalen van GitHub
+//   2. Docker image bouwen (1x, wordt hergebruikt)
+//   3. Deploy naar staging (poort 8080) → Health check
+//   4. Bij succes: Deploy naar productie (poort 80) → Health check
+//
+// CONTAINER NAAMGEVING:
+//   - flask-staging : Staging container op poort 8080
+//   - flask-app     : Productie container op poort 80
+//
+// Let op: We behouden "flask-app" als productie container naam (niet "flask-prod")
+// omdat Ansible bij initiële deployment ook "flask-app" aanmaakt.
+// Dit voorkomt orphan containers en houdt Ansible/Jenkins consistent.
+// =============================================================================
 
 pipeline {
     agent any
@@ -13,6 +32,7 @@ pipeline {
     environment {
         // Deze waardes worden automatisch ingevuld door Terraform
         APP_SERVER = 'app.klinkr.be'
+        STAGING_SERVER = 'staging.klinkr.be'
         APP_USER = 'admin'
     }
 
@@ -45,7 +65,44 @@ pipeline {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${APP_USER}@${APP_SERVER} '
                             cd /opt/flask-app/flask-app &&
-                            sudo docker build -t flask-app:latest . &&
+                            sudo docker build -t flask-app:latest .
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Staging') {
+            steps {
+                echo "Deployen naar staging omgeving op poort 8080..."
+                sshagent(['vm1-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${APP_USER}@${APP_SERVER} '
+                            sudo docker stop flask-staging || true &&
+                            sudo docker rm flask-staging || true &&
+                            sudo docker run -d --name flask-staging --restart unless-stopped -p 8080:80 flask-app:latest
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Health Check Staging') {
+            steps {
+                echo 'Wachten tot staging container is opgestart...'
+                sh 'sleep 10'
+                echo 'Controleren of staging omgeving draait...'
+                sh "curl -f http://${STAGING_SERVER}:8080/health || exit 1"
+                echo 'Staging health check geslaagd!'
+            }
+        }
+
+        stage('Deploy Productie') {
+            steps {
+                echo "Staging gezond - deployen naar productie op poort 80..."
+                sshagent(['vm1-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${APP_USER}@${APP_SERVER} '
                             sudo docker stop flask-app || true &&
                             sudo docker rm flask-app || true &&
                             sudo docker run -d --name flask-app --restart unless-stopped -p 80:80 flask-app:latest
@@ -55,23 +112,32 @@ pipeline {
             }
         }
 
-        stage('Health Check') {
+        stage('Health Check Productie') {
             steps {
-                echo 'Wachten tot container is opgestart...'
+                echo 'Wachten tot productie container is opgestart...'
                 sh 'sleep 10'
-                echo 'Controleren of app draait...'
+                echo 'Controleren of productie omgeving draait...'
                 sh "curl -f http://${APP_SERVER}:80/health || exit 1"
+                echo 'Productie health check geslaagd!'
             }
         }
     }
 
     post {
         success {
-            echo 'Deployment geslaagd!'
-            echo "App URL: http://${APP_SERVER}"
+            echo '=========================================='
+            echo 'Deployment GESLAAGD!'
+            echo '=========================================='
+            echo "Staging URL: http://${STAGING_SERVER}:8080"
+            echo "Productie URL: http://${APP_SERVER}"
+            echo '=========================================='
         }
         failure {
-            echo 'Deployment mislukt!'
+            echo '=========================================='
+            echo 'Deployment MISLUKT!'
+            echo '=========================================='
+            echo 'Controleer logs voor details.'
+            echo '=========================================='
         }
     }
 }

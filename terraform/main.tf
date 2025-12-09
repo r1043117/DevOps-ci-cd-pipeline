@@ -104,6 +104,17 @@ resource "aws_security_group" "app_server_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Staging omgeving poort (8080)
+  # Hiermee kan de staging container bereikt worden voor testen
+  # voordat we naar productie deployen
+  ingress {
+    description = "Staging omgeving"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # --- UITGAAND VERKEER (van server naar internet) ---
   # We staan alles toe zodat de server updates kan downloaden, etc.
   egress {

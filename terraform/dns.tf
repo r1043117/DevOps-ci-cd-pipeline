@@ -30,3 +30,15 @@ resource "gandi_livedns_record" "jenkins" {
   ttl    = 300
   values = [aws_eip.jenkins_server.public_ip]
 }
+
+
+# A-record voor staging.klinkr.be -> App Server (staging omgeving)
+# Wijst naar dezelfde server als app.klinkr.be, maar op poort 8080
+# wordt de staging container bereikt voor testen voor productie
+resource "gandi_livedns_record" "staging" {
+  zone   = var.domain_name
+  name   = "staging"
+  type   = "A"
+  ttl    = 300
+  values = [aws_eip.app_server.public_ip]
+}
