@@ -11,9 +11,6 @@ ansible/*.retry
 ansible/group_vars/all/vault.yml
 ansible/.vault_pass.txt
 
-# Generated files
-Jenkinsfile
-
 # OS files
 .DS_Store
 *.swp
