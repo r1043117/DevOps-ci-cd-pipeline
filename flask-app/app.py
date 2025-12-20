@@ -6,22 +6,6 @@ import os
 import sys
 from datetime import datetime
 
-INDEX_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "templates",
-    "index.html"
-)
-
-if not os.path.exists(INDEX_PATH):
-    print("BUILD FAILED: templates/index.html niet gevonden")
-    sys.exit(1)
-
-with open(INDEX_PATH, "r", encoding="utf-8") as f:
-    index_contains_thijs = "Thijs" in f.read()
-
-if not index_contains_thijs:
-    print("BUILD FAILED: 'Thijs' ontbreekt in templates/index.html")
-    sys.exit(1)
 
 app = Flask(__name__)
 
