@@ -12,11 +12,15 @@ INDEX_PATH = os.path.join(
     "index.html"
 )
 
-with open(INDEX_PATH, "r", encoding="utf-8") as f:
-    INDEX_CONTAINS_THIJS = "Thijs" in f.read()
+if not os.path.exists(INDEX_PATH):
+    print("BUILD FAILED: templates/index.html niet gevonden")
+    sys.exit(1)
 
-if not INDEX_CONTAINS_THIJS:
-    print("BUILD FAILED: 'Thijs' ontbreekt in index.html")
+with open(INDEX_PATH, "r", encoding="utf-8") as f:
+    index_contains_thijs = "Thijs" in f.read()
+
+if not index_contains_thijs:
+    print("BUILD FAILED: 'Thijs' ontbreekt in templates/index.html")
     sys.exit(1)
 
 app = Flask(__name__)
