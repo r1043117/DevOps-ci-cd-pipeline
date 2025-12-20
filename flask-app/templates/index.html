@@ -1,3 +1,38 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask CI/CD Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Flask CI/CD Demo</h1>
 
+        <div class="info-box">
+            <h2>Server Informatie</h2>
+            <p><strong>Hostname:</strong> {{ hostname }}</p>
+            <p><strong>Timestamp:</strong> {{ timestamp }}</p>
+        </div>
 
-<fdflqksddsqk
+        <div class="info-box">
+            <h2>Over dit project:</h2>
+            <p>Dit is een demo!!! test 2 applicatie voor ons Thomas More DevOps groepsproject!</p>
+            <p>Onze applicatie wordt automatisch gedeployed via:</p>
+            <ul>
+                <li><strong>Terraform</strong> - Maakt de AWS infrastructuur</li>
+                <li><strong>Ansible</strong> - Configureert de servers</li>
+                <li><strong>Jenkins</strong> - Bouwt en deployt automatisch</li>
+                <li><strong>Docker</strong> - Draait de applicatie in een container</li>
+            </ul>
+        </div>
+
+        <div class="endpoints">
+            <h2>API Endpoints</h2>
+            <p><a href="/health">/health</a> - Health check</p>
+            <p><a href="/api/info">/api/info</a> - API informatie</p>
+        </div>
+    </div>
+</body>
+</html>
