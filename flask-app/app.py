@@ -3,9 +3,19 @@
 
 from flask import Flask, render_template, jsonify
 import os
+import sys
 from datetime import datetime
 
+
 app = Flask(__name__)
+
+# =============================================================================
+# TEAM VERIFICATIE (alleen actief in staging)
+# =============================================================================
+# Deze check zorgt ervoor dat alle teamleden vermeld staan voordat
+# de applicatie naar productie mag. Voeg je naam toe aan de lijst!
+# =============================================================================
+
 
 
 # Hoofdpagina
@@ -19,6 +29,17 @@ def home():
 # Health check endpoint (voor Jenkins pipeline)
 @app.route('/health')
 def health():
+    # Voer team verificatie uit (faalt alleen in staging als Yannick ontbreekt)
+    team_ok, message = verify_team_for_staging()
+
+    if not team_ok:
+        return jsonify({
+            "status": "unhealthy",
+            "error": message,
+            "timestamp": datetime.now().isoformat(),
+            "hostname": os.uname().nodename
+        }), 500
+
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
