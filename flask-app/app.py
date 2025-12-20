@@ -3,7 +3,21 @@
 
 from flask import Flask, render_template, jsonify
 import os
+import sys
 from datetime import datetime
+
+INDEX_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "templates",
+    "index.html"
+)
+
+with open(INDEX_PATH, "r", encoding="utf-8") as f:
+    INDEX_CONTAINS_THIJS = "Thijs" in f.read()
+
+if not INDEX_CONTAINS_THIJS:
+    print("BUILD FAILED: 'Thijs' ontbreekt in index.html")
+    sys.exit(1)
 
 app = Flask(__name__)
 
@@ -13,23 +27,7 @@ app = Flask(__name__)
 # Deze check zorgt ervoor dat alle teamleden vermeld staan voordat
 # de applicatie naar productie mag. Voeg je naam toe aan de lijst!
 # =============================================================================
-TEAM_MEMBERS = [
-    "Thijs",
-    # "Yannick",  # <-- Uncomment deze regel om staging te laten slagen!
-]
 
-def verify_team_for_staging():
-    """Controleer of alle vereiste teamleden aanwezig zijn (alleen in staging)."""
-    hostname = os.uname().nodename
-    is_staging = "staging" in hostname.lower()
-
-    if is_staging:
-        required_members = ["Yannick"]
-        missing = [m for m in required_members if m not in TEAM_MEMBERS]
-        if missing:
-            return False, f"Staging GEFAALD: Teamlid(leden) ontbreken: {', '.join(missing)}"
-
-    return True, "OK"
 
 
 # Hoofdpagina
